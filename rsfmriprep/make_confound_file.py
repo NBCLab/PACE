@@ -26,11 +26,11 @@ def main(argv=None):
     args = get_parser().parse_args(argv)
 
     df_in = pd.read_csv(args.input, sep='\t')
-    
+
     #cols = ['global_signal', 'csf', 'white_matter', 'trans_x', 'trans_y', 'trans_z', 'rot_x',  'rot_y', 'rot_z']
     #cols = ['csf', 'white_matter', 'trans_x', 'trans_x_derivative1', 'trans_y', 'trans_y_derivative1', 'trans_z', 'trans_z_derivative1', 'rot_x', 'rot_x_derivative1',  'rot_y', 'rot_y_derivative1', 'rot_z', 'rot_z_derivative1']
     #cols = ['csf', 'white_matter', 'trans_x', 'trans_x_power2', 'trans_x_derivative1', 'trans_x_derivative1_power2', 'trans_y', 'trans_y_power2', 'trans_y_derivative1', 'trans_y_derivative1_power2', 'trans_z', 'trans_z_power2', 'trans_z_derivative1', 'trans_z_derivative1_power2', 'rot_x', 'rot_x_power2', 'rot_x_derivative1',  'rot_x_derivative1_power2', 'rot_y', 'rot_y_power2', 'rot_y_derivative1', 'rot_y_derivative1_power2', 'rot_z', 'rot_z_power2', 'rot_z_derivative1', 'rot_z_derivative1_power2']
-    
+
     cols = ['trans_x', 'trans_x_derivative1', 'trans_y', 'trans_y_derivative1', 'trans_z', 'trans_z_derivative1', 'rot_x', 'rot_x_derivative1',  'rot_y', 'rot_y_derivative1', 'rot_z', 'rot_z_derivative1']
     regressfile = args.input
     with open('{0}.json'.format(regressfile.split('.')[0])) as json_file:
@@ -47,33 +47,33 @@ def main(argv=None):
         acompcor_list = []
         acompcor_list.extend(acompcor_list_CSF)
         acompcor_list.extend(acompcor_list_WM)
-        
+
     cols.extend(acompcor_list)
-    
+
     df_out = df_in[cols]
     df_out = df_out.replace('n/a', 0)
-    
+
     df_out.to_csv(args.output, sep='\t', index=False, header=False)
-    
+
     fd = df_in['framewise_displacement']
     fd = fd[1:,]
     fd_cens = np.ones(len(fd.index)+1)
     fd_list = []
     for i, tmp_fd in enumerate(fd):
-        if float(tmp_fd) > 0.35:
+        if float(tmp_fd) > 0.30:
             fd_list.append(i+1)
     fd_cens[fd_list] = 0
-    
+
     out_fname = os.path.splitext(args.output)[0]
-   
+
     ss_cols = [x for x in df_in.columns if 'non_steady_state' in x]
     ss_vals = df_in.as_matrix(ss_cols)
-    
+
     ss_cens = np.sum(ss_vals, axis=1)
     ss_cens = (-ss_cens+1)
-    
+
     fd_ss_cens = np.fmin(fd_cens, ss_cens)
-    
+
     with open('{0}_fd+ss.1D'.format(out_fname), 'a') as fo:
         for tmp in fd_ss_cens:
             fo.write('{0}\n'.format(tmp))
