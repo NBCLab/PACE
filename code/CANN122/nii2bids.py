@@ -24,7 +24,11 @@ def nii2bids(bids_dir, raw_dir):
     for sub_raw_dir in sub_raw_dirs:
         if op.isdir(sub_raw_dir):
             sub = sub_raw_dir.split("/")[-1]
-            if "sub" not in sub:
+            if "sub-" not in sub:
+                if "subj" in sub:
+                    # For COC106
+                    sub.replace("subj", "")
+                    sub = "{:03d}".format(int(sub))
                 sub = "sub-" + sub
 
             img_raw_dirs = sorted(glob(op.join(sub_raw_dir, "*")))
