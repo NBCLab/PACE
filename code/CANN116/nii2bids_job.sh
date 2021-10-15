@@ -17,9 +17,6 @@ set -e
 #==============Shell script==============#
 #Load the software needed
 module load python/python-miniconda3-rdchem-deepchem
-# conda create -p /gpfs1/home/m/r/mriedel/pace/env/env_bidsify python=3.8 -yq
-# source activate
-# pip install pip -U
 source activate /gpfs1/home/m/r/mriedel/pace/env/env_bidsify
 
 PROJECT="pace"
@@ -29,9 +26,19 @@ RAWS_DIR="${HOST_DIR}/${PROJECT}/raw/CANN116_sourcedata_Janna_Cousijn/sourcedata
 DATA="CANN116"
 CODE_DIR="${DSETS_DIR}/dset-${DATA}/code"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
+SOFT_DIR="/gpfs1/home/m/r/mriedel/pace/software/MRIcroGL/Resources"
 
+# Script for DICOM to NII of dwi 
+chmod +x ${CODE_DIR}/nii2bids_dwi.sh
+cmd="bash ${CODE_DIR}/nii2bids_dwi.sh \
+    ${BIDS_DIR} \
+    ${RAWS_DIR} \
+    ${SOFT_DIR}"
+# Setup done, run the command
+echo Commandline: $cmd
+eval $cmd 
 
-# Run python script
+# Run python script for BIDSifying anat and func and dwi
 cmd="python -u ${CODE_DIR}/nii2bids.py \
       --bids_dir ${BIDS_DIR} \
       --raw_dir ${RAWS_DIR} \
