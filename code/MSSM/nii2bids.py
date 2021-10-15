@@ -19,6 +19,7 @@ def nii2bids(bids_dir, raw_dir):
     modalities = {"T1w": "anat", "T2w": "anat", "dwi": "dwi", "events": "func", "bold": "func"}
 
     in_files = sorted(glob(op.join(raw_dir, "*")))
+    prev_sub = None
     for in_file in in_files:
         orig_bids_name = os.path.basename(in_file)
         base, ext = os.path.splitext(orig_bids_name)
@@ -29,7 +30,13 @@ def nii2bids(bids_dir, raw_dir):
             ext = ext2 + ext
         base_list = base.split("_")
         sub = base_list[0]
+        if sub == prev_sub:
+            base_list[1] = "ses-02"
+        else:
+            base_list[1] = "ses-01"
         ses = base_list[1]
+        base = "_".join(base_list)
+
         mod = base_list[-1]
         if mod == "scans":
             continue
@@ -52,6 +59,7 @@ def nii2bids(bids_dir, raw_dir):
         bids_name = f"{base}{ext}"
         out_file = op.join(img_bids_dir, bids_name)
         copyfile(in_file, out_file)
+        prev_sub = sub
 
 
 def _get_parser():
