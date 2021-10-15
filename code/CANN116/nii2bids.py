@@ -1,11 +1,8 @@
 import argparse
 import os
 import os.path as op
-import zipfile
 from glob import glob
-from shutil import copyfile, rmtree
-
-import nibabel as nib
+from shutil import copyfile
 
 
 def nii2bids(bids_dir, raw_dir):
