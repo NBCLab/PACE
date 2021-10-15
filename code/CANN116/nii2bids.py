@@ -18,8 +18,6 @@ def nii2bids(bids_dir, raw_dir):
     work_dir : str
     """
     sub_raw_dirs = sorted(glob(op.join(raw_dir, "sub-*")))
-    print(sorted(os.listdir(raw_dir)))
-    print(len(sorted(os.listdir(raw_dir))))
     for sub_raw_dir in sub_raw_dirs:
         sub = sub_raw_dir.split("/")[-1]
 
