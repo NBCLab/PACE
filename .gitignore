@@ -2,6 +2,10 @@
 .vscode/
 data/
 
+# HPC job files
+*.err
+*.out
+
 historical/
 docs/_build/
 docs/generated/
