@@ -3,7 +3,7 @@ import os
 import os.path as op
 import zipfile
 from glob import glob
-from shutil import copyfile
+from shutil import copyfile, rmtree
 
 import nibabel as nib
 
@@ -18,6 +18,8 @@ def nii2bids(bids_dir, raw_dir):
     work_dir : str
     """
     sub_raw_dirs = sorted(glob(op.join(raw_dir, "sub-*")))
+    print(sorted(os.listdir(raw_dir)))
+    print(len(sorted(os.listdir(raw_dir))))
     for sub_raw_dir in sub_raw_dirs:
         sub = sub_raw_dir.split("/")[-1]
 
@@ -48,43 +50,29 @@ def nii2bids(bids_dir, raw_dir):
                 copyfile(in_file, out_file)
 
         # For DWI data
-        dwi_dir = op.join(sub_raw_dir, "dwi")
-        if (os.path.exists(dwi_dir)) and (sub != "sub-1011"):
+        dwi_dir = op.join(bids_dir, sub, "dwi")
+        if os.path.exists(dwi_dir):
             print(f"Processing {sub} modality dwi")
-            img_bids_dir = op.join(bids_dir, sub, "dwi")
-
-            # Unzip raw imgs dir
-            zip_dir = glob(op.join(sub_raw_dir, "dwi", "Z*.zip"))[0]
-            with zipfile.ZipFile(zip_dir, "r") as zip_ref:
-                zip_ref.extractall(dwi_dir)
-
-            # Create Bids directory
-            if op.exists(img_bids_dir):
-                pass
-            else:
-                os.makedirs(img_bids_dir)
 
             # Collect dwi
-            acqs = ["A", "P"]
-            for acq in acqs:
-                img_files = glob(op.join(dwi_dir, "*", f"*_{acq}_*.PAR"))
-                bvec_files = glob(op.join(dwi_dir, "*", f"*_{acq}_*.bvec"))
-                bval_files = glob(op.join(dwi_dir, "*", f"*_{acq}_*.bval"))
-                for file, img_file in enumerate(img_files):
-                    # Conform output name
-                    extensions = ["nii.gz", "bvec", "bval"]
-                    for ext in extensions:
-                        bids_name = f"{sub}_acq-{acq.lower()}_dwi.{ext}"
-                        out_file = op.join(bids_dir, sub, "dwi", bids_name)
-                        if ext == "nii.gz":
-                            img = nib.load(img_file)
-                            nifti = nib.Nifti1Image(img.dataobj, img.affine, header=img.header)
-                            nifti.set_data_dtype("<f4")
-                            nifti.to_filename(out_file)
-                        elif ext == "bvec":
-                            copyfile(bvec_files[file], out_file)
-                        else:
-                            copyfile(bval_files[file], out_file)
+            dirs = ["A", "P"]
+            for dir in dirs:
+                in_files = glob(op.join(dwi_dir, f"*_{dir}_*"))
+                for in_file in in_files:
+                    orig_bids_name = os.path.basename(in_file)
+                    base, ext = os.path.splitext(orig_bids_name)
+                    if ext == ".gz":
+                        _, ext2 = os.path.splitext(base)
+                        ext = ext2 + ext
+                    if dir == "A":
+                        encode = "pa"
+                    elif dir == "P":
+                        encode = "ap"
+
+                    bids_name = f"{sub}_dir-{encode}_dwi{ext}"
+
+                    out_file = op.join(dwi_dir, bids_name)
+                    os.rename(in_file, out_file)
 
 
 def _get_parser():
