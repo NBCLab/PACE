@@ -6,6 +6,7 @@ BIDS_DIR=$1
 RAWS_DIR=$2
 SOFT_DIR=$3
 
+chmod +x ${SOFT_DIR}/dcm2niix
 sub_raw_dirs=($(ls -d ${RAWS_DIR}/*/dwi))
 for sub_raw_dir in ${sub_raw_dirs[@]}; do
     sub=$(echo ${sub_raw_dir} | awk -F'/' '{print $(NF-1)}')

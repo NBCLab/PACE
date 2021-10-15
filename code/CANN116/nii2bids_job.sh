@@ -29,8 +29,8 @@ BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
 SOFT_DIR="/gpfs1/home/m/r/mriedel/pace/software/MRIcroGL/Resources"
 
 # Script for DICOM to NII of dwi 
-chmod +x ${CODE_DIR}/nii2bids_dwi.sh
-cmd="bash ${CODE_DIR}/nii2bids_dwi.sh \
+chmod +x ${CODE_DIR}/par2nii.sh
+cmd="bash ${CODE_DIR}/par2nii.sh \
     ${BIDS_DIR} \
     ${RAWS_DIR} \
     ${SOFT_DIR}"
