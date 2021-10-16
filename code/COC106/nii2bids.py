@@ -28,7 +28,6 @@ def nii2bids(bids_dir, raw_dir):
                 if "subj" in sub:
                     # For COC106
                     sub = sub.replace("subj", "")
-                    print(sub)
                     sub = "{:03d}".format(int(sub))
                 sub = "sub-" + sub
 
@@ -63,14 +62,16 @@ def nii2bids(bids_dir, raw_dir):
                         ext = ext2 + ext
                         bids_name = f"{sub}_{modalities[mod]}{ext}"
                         out_file = op.join(img_bids_dir, bids_name)
-                        copyfile(in_file, out_file)
+                        if not op.isfile(out_file):
+                            copyfile(in_file, out_file)
                     else:
                         ext = ext + ".gz"
                         bids_name = f"{sub}_{modalities[mod]}{ext}"
                         out_file = op.join(img_bids_dir, bids_name)
-                        with open(in_file, "rb") as f_in:
-                            with gzip.open(out_file, "wb") as f_out:
-                                shutil.copyfileobj(f_in, f_out)
+                        if not op.isfile(out_file):
+                            with open(in_file, "rb") as f_in:
+                                with gzip.open(out_file, "wb") as f_out:
+                                    shutil.copyfileobj(f_in, f_out)
 
 
 def _get_parser():

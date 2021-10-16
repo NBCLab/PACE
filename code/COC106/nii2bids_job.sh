@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=nii2bids_COC106
-#SBATCH --time=03:00:00
+#SBATCH --time=29:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=1gb
-#SBATCH --partition=short
+#SBATCH --partition=bluemoon
 # Outputs ----------------------------------
 #SBATCH --output=log/nii2bids_COC106-%j.out   
 #SBATCH --error=log/nii2bids_COC106-%j.err   
