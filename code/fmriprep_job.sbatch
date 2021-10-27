@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH --job-name=fmriprep
 #SBATCH --time=168:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -7,15 +6,15 @@
 #SBATCH --mem-per-cpu=4gb
 #SBATCH --partition=bigmemwk
 # Outputs ----------------------------------
-#SBATCH --output=log/%x_%j.out   
-#SBATCH --error=log/%x_%j.err   
+#SBATCH --output=log/%x_%A-%a.out   
+#SBATCH --error=log/%x_%A-%a.err   
 # ------------------------------------------
 
 
 pwd; hostname; date
 set -e
 
-# sbatch --array=1-130%5 --export=DATA="MSSM" fmriprep_job.sbatch
+# sbatch --array=1-130%5 --job-name="fmriprep-MSSM" --export=DATA="MSSM" fmriprep_job.sbatch
 
 #==============Shell script==============#
 #Load the software needed
@@ -32,23 +31,24 @@ mkdir -p ${SCRATCH_DIR}
 mkdir -p ${DERIVS_DIR}
 
 # Prepare some writeable bind-mount points.
-TEMPLATEFLOW_HOST_HOME=$HOME/.cache/templateflow
-FMRIPREP_HOST_CACHE=$HOME/.cache/fmriprep
+TEMPLATEFLOW_HOST_HOME=${HOME}/.cache/templateflow
+FMRIPREP_HOST_CACHE=${HOME}/.cache/fmriprep
 mkdir -p ${TEMPLATEFLOW_HOST_HOME}
 mkdir -p ${FMRIPREP_HOST_CACHE}
 
 
 # Make sure FS_LICENSE is defined in the container.
-FS_LICENSE="/gpfs1/home/m/r/mriedel/pace/software/freesurfer/license.txt"
+FS_LICENSE="/gpfs1/home/m/r/mriedel/pace/software/freesurfer"
 
 # Designate a templateflow bind-mount point
-export SINGULARITYENV_TEMPLATEFLOW_HOME="$HOME/.cache/templateflow"
+export SINGULARITYENV_TEMPLATEFLOW_HOME=${TEMPLATEFLOW_HOST_HOME}
 
 SINGULARITY_CMD="singularity run --cleanenv \
       -B $BIDS_DIR:/data \
       -B ${DERIVS_DIR}:/out \
       -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME} \
-      -B $SCRATCH_DIR:/work \
+      -B ${SCRATCH_DIR}:/work \
+      -B ${FS_LICENSE}:/freesurfer
       $IMG_DIR/nipreps-fmriprep_20.2.5.sif"
 
 # Parse the participants.tsv file and extract one subject ID from the line corresponding to this SLURM task.
@@ -56,6 +56,9 @@ subject=$( sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/sub-(\S*)\>.*/\1/gp" ${BI
 
 # Compose the command line
 mem_gb=`echo "${SLURM_MEM_PER_CPU} * ${SLURM_CPUS_PER_TASK}" | bc -l`
+echo ${SLURM_MEM_PER_CPU}
+echo ${SLURM_CPUS_PER_TASK}
+echo ${mem_gb}
 cmd="${SINGULARITY_CMD} /data \
       /out \
       participant \
@@ -64,11 +67,12 @@ cmd="${SINGULARITY_CMD} /data \
       -vv \
       --omp-nthreads ${SLURM_CPUS_PER_TASK} \
       --nprocs ${SLURM_CPUS_PER_TASK} \
-      --mem_gb ${mem_gb} \
+      --mem_mb ${mem_gb} \
       --output-spaces MNI152NLin2009cAsym:res-2 anat fsnative fsaverage5 \
+      --cifti-output 91k \
       --notrack \
       --skip_bids_validation \
-      --fs-license-file $FS_LICENSE"
+      --fs-license-file /freesurfer/license.txt"
 
 # Setup done, run the command
 echo Running task ${SLURM_ARRAY_TASK_ID}
