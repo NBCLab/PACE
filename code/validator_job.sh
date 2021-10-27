@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH --job-name=validator
 #SBATCH --time=03:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -15,7 +14,7 @@ pwd; hostname; date
 set -e
 
 # Submit the job using the variable DATA="data-name"
-# sbatch --export=DATA="MSSM" validator_job.sh
+# sbatch --job-name="validator-MSSM" --export=DATA="MSSM" validator_job.sh
 
 #==============Shell script==============#
 #Load the software needed
