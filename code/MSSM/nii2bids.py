@@ -16,12 +16,9 @@ def nii2bids(bids_dir, raw_dir):
     """
 
     # Collect anat and func
-    modalities = {"T1w": "anat", "T2w": "anat", "dwi": "dwi", "events": "func", "bold": "func"}
+    modalities = {"T1w": "anat", "T2w": "anat", "dwi": "dwi", "bold": "func"}
 
     in_files = sorted(glob(op.join(raw_dir, "*")))
-    prev_sub = None
-    prev_ses = None
-    updt_ses = None
     for in_file in in_files:
         orig_bids_name = os.path.basename(in_file)
         base, ext = os.path.splitext(orig_bids_name)
@@ -33,17 +30,16 @@ def nii2bids(bids_dir, raw_dir):
         base_list = base.split("_")
         sub = base_list[0]
         ses = base_list[1]
-        if (sub == prev_sub) and ((ses != prev_ses) or (updt_ses == "ses-02")):
-            base_list[1] = "ses-02"
+        ses_date = ses.split("-")[1]
+        if int(ses_date[0:4]) > 2015:
+            updt_ses = "ses-02"
         else:
-            base_list[1] = "ses-01"
-        prev_ses = ses
-        prev_sub = sub
-        updt_ses = base_list[1]
+            updt_ses = "ses-01"
+        base_list[1] = updt_ses
         base = "_".join(base_list)
 
         mod = base_list[-1]
-        if mod == "scans":
+        if (mod == "scans") or (mod == "events"):
             continue
 
         if mod == "sbref":
