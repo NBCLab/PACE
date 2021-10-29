@@ -68,10 +68,10 @@ cmd="${SINGULARITY_CMD} /data \
       --omp-nthreads ${SLURM_CPUS_PER_TASK} \
       --nprocs ${SLURM_CPUS_PER_TASK} \
       --mem_mb ${mem_gb} \
-      --output-spaces MNI152NLin2009cAsym:res-2 anat fsnative fsaverage5 \
+      --output-spaces MNI152NLin2009cAsym:res-native anat:res-native func:res-native fsnative:res-native fsaverage5:res-native  \
       --cifti-output 91k \
       --notrack \
-      --skip_bids_validation \
+      --no-submm-recon \
       --fs-license-file /freesurfer/license.txt"
 
 # Setup done, run the command
