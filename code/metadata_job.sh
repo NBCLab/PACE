@@ -14,7 +14,7 @@ pwd; hostname; date
 set -e
 
 # Submit the job using the variable DATA="data-name"
-# sbatch --job-name="jsons-MSSM" --export=DATA="MSSM" fixjsons_job.sh
+# sbatch --job-name="jsons-NIAAA" --export=DATA="NIAAA" metadata_job.sh
 
 #==============Shell script==============#
 #Load the software needed
@@ -26,20 +26,17 @@ PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 CODE_DIR="${DSETS_DIR}/code"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
-
-echo "Adding files for ${BIDS_DIR}"
-
-# Generate .bidsignore file
+TEMPLATE=None
 
 # Fix json files
-cmd="python -u ${CODE_DIR}/fixjsons.py \
+cmd="python ${CODE_DIR}/metadata_fix.py \
       --bids_dir ${BIDS_DIR} \
-      >> log/${SLURM_JOB_NAME}_logfile.log"
+      --template "
 # Setup done, run the command
 echo Commandline: $cmd
 eval $cmd 
 
 
-echo "Generate participants.tsv file for ${DATA} with exit code $exitcode"
+echo "Fix json file for ${DATA} with exit code $exitcode"
 date
 exit $exitcode

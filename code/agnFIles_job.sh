@@ -14,7 +14,7 @@ pwd; hostname; date
 set -e
 
 # Submit the job using the variable DATA="data-name"
-# sbatch --job-name="files-MSSM" --export=DATA="MSSM" agnFIles_job.sh
+# sbatch --job-name="files-NIAAA" --export=DATA="NIAAA" agnfiles_job.sh
 
 #==============Shell script==============#
 #Load the software needed
@@ -41,14 +41,13 @@ else
     echo "/code" >> $bidsignore
 fi
 
-# dataset_description.json
-dataset="${BIDS_DIR}/dataset_description.json"
-if [ -f "$dataset" ]; then
-    echo "$dataset exists."
+# dataset_description.json and participant.tsv
+participants="${BIDS_DIR}/participants.tsv"
+if [ -f "${participants}" ]; then
+    echo "${participants} exists."
 else 
-    cmd="python -u ${CODE_DIR}/dataset_description.py \
-          --bids_dir ${BIDS_DIR} \
-          >> log/${SLURM_JOB_NAME}_logfile.log"
+    cmd="python ${CODE_DIR}/agnfiles.py \
+          --bids_dir ${BIDS_DIR}"
     # Setup done, run the command
     echo Commandline: $cmd
     eval $cmd 
@@ -72,18 +71,6 @@ else
     echo -e "\t Bidsification." >> "${CHANGES}"
 fi
 
-# Generate participants.tsv file
-participants="${BIDS_DIR}/participants.tsv"
-if [ -f "${participants}" ]; then
-    echo "${participants} exists."
-else 
-    cmd="python -u ${CODE_DIR}/participants.py \
-          --bids_dir ${BIDS_DIR} \
-          >> log/${SLURM_JOB_NAME}_logfile.log"
-    # Setup done, run the command
-    echo Commandline: $cmd
-    eval $cmd 
-fi
 
 echo "Generate participants.tsv file for ${DATA} with exit code $exitcode"
 date

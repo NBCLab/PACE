@@ -1,4 +1,5 @@
 import argparse
+import json
 import os.path as op
 from glob import glob
 
@@ -7,13 +8,20 @@ import pandas as pd
 
 def participants(bids_dir):
     """
-    Generate participants.tsv
+    Generate participants.tsv and dataset_description.json
 
     Parameters
     ----------
     bids_dir : str
     """
 
+    # dataset_description.json
+    dictionary = {"Name": "ENIGMA-Addiction", "BIDSVersion": "1.8.0"}
+    outfile = op.join(bids_dir, "dataset_description.json")
+    with open(outfile, "w") as outfile_json:
+        json.dump(dictionary, outfile_json, indent=4)
+
+    # participants.tsv
     sub_dirs = sorted(glob(op.join(bids_dir, "*")))
     df = pd.DataFrame()
     sub_list = []
@@ -27,7 +35,9 @@ def participants(bids_dir):
 
 
 def _get_parser():
-    parser = argparse.ArgumentParser(description="Generate participants.tsv")
+    parser = argparse.ArgumentParser(
+        description="Generate participants.tsv and dataset_description.json"
+    )
     parser.add_argument(
         "-b", "--bids_dir", dest="bids_dir", required=True, help="Path to BIDS dir"
     )
