@@ -19,7 +19,7 @@ def nii2bids(bids_dir, raw_dir):
         sub = sub_raw_dir.split("/")[-1]
 
         # Collect anat and func
-        modalities = {"anat": "T1w", "func": "taks-rest_bold"}
+        modalities = {"anat": "T1w", "func": "task-rest_bold"}
         for mod in modalities.keys():
             print(f"Processing {sub} modality {mod}")
             # Create Bids directory

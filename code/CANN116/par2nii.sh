@@ -17,7 +17,7 @@ for sub_raw_dir in ${sub_raw_dirs[@]}; do
         -b y \
         -ba y \
         -z y \
-        ${sub_raw_dirs}/*"
+        ${sub_raw_dir}/*"
     echo Commandline: $cmd
     eval $cmd 
 done

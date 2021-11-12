@@ -28,10 +28,9 @@ CODE_DIR="${DSETS_DIR}/dset-${DATA}/code"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
 
 # Run python script for BIDSifying anat and func and dwi
-cmd="python -u ${CODE_DIR}/nii2bids.py \
+cmd="python ${CODE_DIR}/nii2bids.py \
       --bids_dir ${BIDS_DIR} \
-      --raw_dir ${RAWS_DIR} \
-      >> log/logfile.log"
+      --raw_dir ${RAWS_DIR} "
 # Setup done, run the command
 echo Commandline: $cmd
 eval $cmd 
