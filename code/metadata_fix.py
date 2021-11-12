@@ -3,9 +3,10 @@ import json
 import os.path as op
 
 import bids
+import numpy as np
 from bids.layout import BIDSLayout
 
-from utils import get_echotime, get_slicetiming, get_TR
+from utils import get_slicetiming, get_TR
 
 bids.config.set_option("extension_initial_dot", True)
 
@@ -32,7 +33,7 @@ keep_keys = [
 ]
 
 
-def fixjsons(bids_dir, template):
+def fixjsons(bids_dir, func_template):
     """
     Fix *.json
 
@@ -41,13 +42,14 @@ def fixjsons(bids_dir, template):
     bids_dir : str
     """
     layout = BIDSLayout(bids_dir)
-    subjects = layout.get_subjects()
+    subjects = sorted(layout.get_subjects())
 
     print(subjects, flush=True)
     for subj in subjects:
         # Functional scans
         scans = layout.get(subject=subj, extension=".nii.gz", task="rest")
         for scan in scans:
+            print(scan)
             json_file = layout.get_nearest(scan, extension=".json")
             if json_file is None:
                 # Add metadata
@@ -58,28 +60,28 @@ def fixjsons(bids_dir, template):
                 base_path = op.dirname(scan)
                 json_file = op.join(base_path, f"{base_name}.json")
 
-                if template is None:
+                if func_template == "None":
                     metadata = {}
-                    metadata["EchoTime"] = get_echotime(scan)
-                    metadata["RepetitionTime"] = get_TR(scan)
-
-                    print(scan_name.filename, flush=True)
-                    print(scan.filename, flush=True)
+                    # metadata["EchoTime"] = get_echotime(scan)
+                    # metadata["EchoTime"] = np.float64(0.03)
+                    metadata["RepetitionTime"] = np.float64(get_TR(scan))
                 else:
                     metadata = json.loads
-                    with open(template) as f:
+                    with open(func_template) as f:
                         metadata = json.load(f)
             else:
                 # Fix metadata
                 metadata = scan.get_metadata()
 
             metadata2 = {key: metadata[key] for key in keep_keys if key in metadata.keys()}
+
             # Add task name
             if "TaskName" not in metadata.keys():
                 metadata2["TaskName"] = "rest"
             # Add slice timing
             if "SliceTiming" not in metadata.keys():
-                metadata2["SliceTiming"] = get_slicetiming(scan)
+                mode = "interleaved"
+                metadata2["SliceTiming"] = get_slicetiming(scan, mode, ascending=True)
 
             # Write json
             with open(json_file, "w") as fo:
@@ -102,17 +104,17 @@ def _get_parser():
         help="Path to BIDS dir",
     )
     parser.add_argument(
-        "-t",
-        "--template",
-        dest="template",
+        "-f",
+        "--func_template",
+        dest="func_template",
         required=False,
-        help="JSON template",
+        help="JSON functional template",
     )
     return parser
 
 
-def main(bids_dir, template):
-    fixjsons(bids_dir, template)
+def main(bids_dir, func_template):
+    fixjsons(bids_dir, func_template)
 
 
 def _main(argv=None):

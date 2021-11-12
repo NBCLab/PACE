@@ -26,12 +26,12 @@ PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 CODE_DIR="${DSETS_DIR}/code"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
-TEMPLATE=None
+FUNC_TEMPLATE=None
 
 # Fix json files
 cmd="python ${CODE_DIR}/metadata_fix.py \
       --bids_dir ${BIDS_DIR} \
-      --template "
+      --func_template ${FUNC_TEMPLATE}"
 # Setup done, run the command
 echo Commandline: $cmd
 eval $cmd 

@@ -1,3 +1,5 @@
+import math
+
 import nibabel as nib
 import numpy as np
 
@@ -6,16 +8,15 @@ def get_TR(nifti_file):
     # Looking for TR in the nifti header
     img = nib.load(nifti_file)
     header = img.header
-    print(header)
-    print(header.get_zooms())
-    return round(header.get_zooms()[3], 1)
+    return round(header["pixdim"][4], 1)
 
 
 def get_nslices(nifti_file):
     # Looking for nslices in the nifti header
     img = nib.load(nifti_file)
     header = img.header
-    return header.get_n_slices()
+    # header.get_n_slices()
+    return header.get_data_shape()[2]
 
 
 def get_echotime(nifti_file):
@@ -27,19 +28,28 @@ def get_echotime(nifti_file):
     return int(echo_time) / 1000
 
 
-def get_slicetiming(nifti_file, ascending=True, interleaved=True):
+def get_slicetiming(nifti_file, mode, ascending=True):
+    # Mode default = 1 3 5 ... 2 4 6 ...
+    # Mode interleaved = 1 4 7 10 2 5 8 3 6 9
     TR = get_TR(nifti_file)
     nslices = get_nslices(nifti_file)
-    print(f"TR = {TR}, Slices = {nslices}", flush=True)
+    print(f"\tTR = {TR}, Slices = {nslices}", flush=True)
 
     # Slice Timing
     sliceduration = TR / nslices
     slicetiming = np.linspace(0, TR - sliceduration, nslices)
+
+    if mode == "default":
+        order = list(range(0, nslices, 2)) + list(range(1, nslices, 2))
+    if mode == "interleaved":
+        idx = round(math.sqrt(nslices))
+        order = []
+        for i in range(idx):
+            order = order + list(range(i, nslices, idx))
+    slicetiming[order] = slicetiming.copy()
+
     if not ascending:
         slicetiming = np.flip(slicetiming)
-    if interleaved:
-        order = list(range(0, nslices, 2)) + list(range(1, nslices, 2))
-        slicetiming[order] = slicetiming.copy()
 
     slicetiming = slicetiming.tolist()
     return slicetiming
