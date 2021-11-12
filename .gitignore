@@ -6,6 +6,11 @@ data/
 *.err
 *.out
 
+# data
+*.nii*
+*.xlsx
+*.json
+
 historical/
 docs/_build/
 docs/generated/
