@@ -25,7 +25,7 @@ PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
 IMG_DIR="${HOST_DIR}/${PROJECT}/software"
-SCRATCH_DIR="${HOST_DIR}/${PROJECT}/scratch/dset-${DATA}/mriqc-0.16.1"
+SCRATCH_DIR="${HOST_DIR}/${PROJECT}/scratch/dset-${DATA}/mriqc-0.16.1/mriqc_${SLURM_ARRAY_TASK_ID}"
 DERIVS_DIR="${BIDS_DIR}/derivatives/mriqc-0.16.1"
 mkdir -p ${SCRATCH_DIR}
 mkdir -p ${DERIVS_DIR}
