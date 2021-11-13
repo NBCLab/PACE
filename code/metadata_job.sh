@@ -14,7 +14,7 @@ pwd; hostname; date
 set -e
 
 # Submit the job using the variable DATA="data-name"
-# sbatch --job-name="jsons-NIAAA" --export=DATA="NIAAA" metadata_job.sh
+# sbatch --job-name="jsons-CANN116" --export=DATA="CANN116" metadata_job.sh
 
 #==============Shell script==============#
 #Load the software needed
@@ -26,11 +26,13 @@ PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 CODE_DIR="${DSETS_DIR}/code"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
-FUNC_TEMPLATE=None
+FUNC_TEMPLATE="None"
+MODE="default"
 
 # Fix json files
 cmd="python ${CODE_DIR}/metadata_fix.py \
       --bids_dir ${BIDS_DIR} \
+      --mode ${MODE} \
       --func_template ${FUNC_TEMPLATE}"
 # Setup done, run the command
 echo Commandline: $cmd

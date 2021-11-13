@@ -16,33 +16,34 @@ def nii2bids(bids_dir, raw_dir):
     """
     sub_raw_dirs = sorted(glob(op.join(raw_dir, "sub-*")))
     for sub_raw_dir in sub_raw_dirs:
-        sub = sub_raw_dir.split("/")[-1]
+        if op.isdir(sub_raw_dir):
+            sub = sub_raw_dir.split("/")[-1]
 
-        # Collect anat and func
-        modalities = {"anat": "T1w", "func": "task-rest_bold"}
-        for mod in modalities.keys():
-            print(f"Processing {sub} modality {mod}")
-            # Create Bids directory
-            img_bids_dir = op.join(bids_dir, sub, mod)
-            if op.exists(img_bids_dir):
-                pass
-            else:
-                os.makedirs(img_bids_dir)
+            # Collect anat and func
+            modalities = {"anat": "T1w", "func": "task-rest_bold"}
+            for mod in modalities.keys():
+                print(f"Processing {sub} modality {mod}", flush=True)
 
-            img_raw_dir = op.join(sub_raw_dir, mod)
-            in_files = glob(op.join(img_raw_dir, "*.nii*"))
-            for in_file in in_files:
-                # Conform output name
-                orig_bids_name = os.path.basename(in_file)
-                base, ext = os.path.splitext(orig_bids_name)
-                if ext == ".gz":
-                    _, ext2 = os.path.splitext(base)
-                    ext = ext2 + ext
-                bids_name = f"{sub}_{modalities[mod]}{ext}"
+                img_raw_dir = op.join(sub_raw_dir, mod)
+                in_files = glob(op.join(img_raw_dir, "*.nii*"))
+                for in_file in in_files:
+                    # Create Bids directory
+                    img_bids_dir = op.join(bids_dir, sub, mod)
+                    if not op.exists(img_bids_dir):
+                        os.makedirs(img_bids_dir)
 
-                # Copy new names to bids directory
-                out_file = op.join(img_bids_dir, bids_name)
-                copyfile(in_file, out_file)
+                    # Conform output name
+                    orig_bids_name = os.path.basename(in_file)
+                    base, ext = os.path.splitext(orig_bids_name)
+                    if ext == ".gz":
+                        _, ext2 = os.path.splitext(base)
+                        ext = ext2 + ext
+                    bids_name = f"{sub}_{modalities[mod]}{ext}"
+
+                    # Copy new names to bids directory
+                    out_file = op.join(img_bids_dir, bids_name)
+                    if not op.isfile(out_file):
+                        copyfile(in_file, out_file)
 
 
 def _get_parser():

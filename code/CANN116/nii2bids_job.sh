@@ -36,13 +36,12 @@ cmd="bash ${CODE_DIR}/par2nii.sh \
     ${SOFT_DIR}"
 # Setup done, run the command
 echo Commandline: $cmd
-eval $cmd 
+# eval $cmd 
 
 # Run python script for BIDSifying anat and func and dwi
-cmd="python -u ${CODE_DIR}/nii2bids.py \
+cmd="python ${CODE_DIR}/nii2bids.py \
       --bids_dir ${BIDS_DIR} \
-      --raw_dir ${RAWS_DIR} \
-      >> log/logfile.log"
+      --raw_dir ${RAWS_DIR}"
 # Setup done, run the command
 echo Commandline: $cmd
 eval $cmd 

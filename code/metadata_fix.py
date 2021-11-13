@@ -33,7 +33,7 @@ keep_keys = [
 ]
 
 
-def fixjsons(bids_dir, func_template):
+def fixjsons(bids_dir, mode, func_template):
     """
     Fix *.json
 
@@ -49,7 +49,7 @@ def fixjsons(bids_dir, func_template):
         # Functional scans
         scans = layout.get(subject=subj, extension=".nii.gz", task="rest")
         for scan in scans:
-            print(scan)
+            print(scan, flush=True)
             json_file = layout.get_nearest(scan, extension=".json")
             if json_file is None:
                 # Add metadata
@@ -62,11 +62,8 @@ def fixjsons(bids_dir, func_template):
 
                 if func_template == "None":
                     metadata = {}
-                    # metadata["EchoTime"] = get_echotime(scan)
-                    # metadata["EchoTime"] = np.float64(0.03)
                     metadata["RepetitionTime"] = np.float64(get_TR(scan))
                 else:
-                    metadata = json.loads
                     with open(func_template) as f:
                         metadata = json.load(f)
             else:
@@ -80,7 +77,6 @@ def fixjsons(bids_dir, func_template):
                 metadata2["TaskName"] = "rest"
             # Add slice timing
             if "SliceTiming" not in metadata.keys():
-                mode = "interleaved"
                 metadata2["SliceTiming"] = get_slicetiming(scan, mode, ascending=True)
 
             # Write json
@@ -104,6 +100,13 @@ def _get_parser():
         help="Path to BIDS dir",
     )
     parser.add_argument(
+        "-m",
+        "--mode",
+        dest="mode",
+        required=False,
+        help="Slice order mode",
+    )
+    parser.add_argument(
         "-f",
         "--func_template",
         dest="func_template",
@@ -113,8 +116,8 @@ def _get_parser():
     return parser
 
 
-def main(bids_dir, func_template):
-    fixjsons(bids_dir, func_template)
+def main(bids_dir, mode, func_template):
+    fixjsons(bids_dir, mode, func_template)
 
 
 def _main(argv=None):

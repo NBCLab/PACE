@@ -14,7 +14,7 @@ pwd; hostname; date
 set -e
 
 # Submit the job using the variable DATA="data-name"
-# sbatch --job-name="validator-MSSM" --export=DATA="MSSM" validator_job.sh
+# sbatch --job-name="validator-CANN116" --export=DATA="CANN116" validator_job.sh
 
 #==============Shell script==============#
 #Load the software needed
@@ -26,6 +26,8 @@ PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
 IMG_DIR="${HOST_DIR}/${PROJECT}/software"
+DERIVS_DIR="${BIDS_DIR}/derivatives"
+mkdir -p ${DERIVS_DIR}
 
 echo "Validating ${BIDS_DIR}"
 
@@ -34,7 +36,7 @@ rm -f $BIDS_DIR/derivatives/validator.txt
 SINGULARITY_CMD="singularity run --cleanenv \
     -B $BIDS_DIR:/data \
     $IMG_DIR/bids-validator_1.8.0.sif"
-cmd="${SINGULARITY_CMD} /data > $BIDS_DIR/derivatives/validator.txt"
+cmd="${SINGULARITY_CMD} /data > ${DERIVS_DIR}/validator.txt"
 echo Running task BIDS Validator
 echo Commandline: $cmd
 eval $cmd
