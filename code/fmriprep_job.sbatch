@@ -14,7 +14,7 @@
 pwd; hostname; date
 set -e
 
-# sbatch --array=1-$(( $( wc -l ../dset-MSSM/participants.tsv | cut -f1 -d' ' ) - 1 ))%5 --job-name="fmriprep-MSSM" --export=DATA="MSSM" fmriprep_job.sbatch
+# sbatch --array=1-$(( $( wc -l ../dset-ATS107/participants.tsv | cut -f1 -d' ' ) - 1 ))%4 --job-name="fmriprep-ATS107" --export=DATA="ATS107" fmriprep_job.sbatch
 
 #==============Shell script==============#
 #Load the software needed
@@ -66,7 +66,6 @@ cmd="${SINGULARITY_CMD} /data \
       --nprocs ${SLURM_CPUS_PER_TASK} \
       --mem_mb ${mem_gb} \
       --output-spaces MNI152NLin2009cAsym:res-native anat:res-native func:res-native \
-      --cifti-output 91k \
       --notrack \
       --no-submm-recon \
       --fs-license-file /freesurfer/license.txt"
