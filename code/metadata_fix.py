@@ -33,7 +33,7 @@ keep_keys = [
 ]
 
 
-def fixjsons(bids_dir, mode, func_template):
+def fixjsons(bids_dir, mode, ref, func_template):
     """
     Fix *.json
 
@@ -77,7 +77,7 @@ def fixjsons(bids_dir, mode, func_template):
                 metadata2["TaskName"] = "rest"
             # Add slice timing
             if "SliceTiming" not in metadata.keys():
-                metadata2["SliceTiming"] = get_slicetiming(scan, mode, ascending=True)
+                metadata2["SliceTiming"] = get_slicetiming(scan, mode, ref, ascending=True)
 
             # Write json
             with open(json_file, "w") as fo:
@@ -107,6 +107,13 @@ def _get_parser():
         help="Slice order mode",
     )
     parser.add_argument(
+        "-r",
+        "--ref",
+        dest="ref",
+        required=False,
+        help="First slice",
+    )
+    parser.add_argument(
         "-f",
         "--func_template",
         dest="func_template",
@@ -116,8 +123,8 @@ def _get_parser():
     return parser
 
 
-def main(bids_dir, mode, func_template):
-    fixjsons(bids_dir, mode, func_template)
+def main(bids_dir, mode, ref, func_template):
+    fixjsons(bids_dir, mode, ref, func_template)
 
 
 def _main(argv=None):

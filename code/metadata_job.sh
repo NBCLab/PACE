@@ -26,13 +26,15 @@ PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 CODE_DIR="${DSETS_DIR}/code"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
-FUNC_TEMPLATE="None"
+FUNC_TEMPLATE="/gpfs1/home/m/r/mriedel/pace/raw/OPI105_JaneJoseph/sourcedata/SCOR_RestingState.json"
 MODE="default"
+REF=1
 
 # Fix json files
 cmd="python ${CODE_DIR}/metadata_fix.py \
       --bids_dir ${BIDS_DIR} \
       --mode ${MODE} \
+      --ref ${REF} \
       --func_template ${FUNC_TEMPLATE}"
 # Setup done, run the command
 echo Commandline: $cmd
