@@ -85,7 +85,20 @@ def fixjsons(bids_dir, mode, ref, templates):
                     # Add slice timing
                     if "SliceTiming" not in metadata.keys():
                         metadata2["SliceTiming"] = get_slicetiming(scan, mode, ref, ascending=True)
-                    get_slicetiming(scan, mode, ref, ascending=True)
+
+                # Phasediff Fieldmaps
+                if suffix == "fieldmap":
+                    # Add units
+                    if "Units" not in metadata.keys():
+                        metadata2["Units"] = "Hz"
+                    # Add IntendedFor
+                    if "IntendedFor" not in metadata.keys():
+                        scan_name = op.basename(scan)
+                        scaname_list = scan_name.split("_")
+                        ses = scaname_list[1]
+                        intended_name = f"sub-{subj}_{ses}_task-rest_bold.nii.gz"
+                        intended_for = op.join(scaname_list[1], "func", intended_name)
+                        metadata2["IntendedFor"] = intended_for
 
                 # Write json
                 with open(json_file, "w") as fo:
