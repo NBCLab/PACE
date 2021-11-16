@@ -30,10 +30,11 @@ keep_keys = [
     "SliceTiming",
     "SoftwareVersions",
     "TaskName",
+    "Units",
 ]
 
 
-def fixjsons(bids_dir, mode, ref, func_template):
+def fixjsons(bids_dir, mode, ref, templates):
     """
     Fix *.json
 
@@ -46,48 +47,49 @@ def fixjsons(bids_dir, mode, ref, func_template):
 
     print(subjects, flush=True)
     for subj in subjects:
-        # Functional scans
-        scans = layout.get(subject=subj, extension=".nii.gz", task="rest")
-        for scan in scans:
-            print(scan, flush=True)
-            json_file = layout.get_nearest(scan, extension=".json")
-            if json_file is None:
-                # Add metadata
-                scan_name = op.basename(scan)
-                base_name, ext = op.splitext(scan_name)
-                if ext == ".gz":
-                    base_name, _ = op.splitext(base_name)
-                base_path = op.dirname(scan)
-                json_file = op.join(base_path, f"{base_name}.json")
-
-                if func_template == "None":
-                    metadata = {}
-                    metadata["RepetitionTime"] = np.float64(get_TR(scan))
-                else:
-                    with open(func_template) as f:
-                        metadata = json.load(f)
+        for t, suffix in enumerate(["T1w", "bold", "dwi", "fieldmap", "magnitude"]):
+            print(f"Procesing {suffix}", flush=True)
+            if suffix == "bold":
+                scans = layout.get(subject=subj, extension=".nii.gz", task="rest")
             else:
-                # Fix metadata
-                metadata = scan.get_metadata()
+                scans = layout.get(subject=subj, extension=".nii.gz", suffix=suffix)
+            for scan in scans:
+                print(f"\t{scan}", flush=True)
+                json_file = layout.get_nearest(scan, extension=".json")
+                if json_file is None:
+                    # Add metadata
+                    scan_name = op.basename(scan)
+                    base_name, ext = op.splitext(scan_name)
+                    if ext == ".gz":
+                        base_name, _ = op.splitext(base_name)
+                    base_path = op.dirname(scan)
+                    json_file = op.join(base_path, f"{base_name}.json")
 
-            metadata2 = {key: metadata[key] for key in keep_keys if key in metadata.keys()}
+                    if templates[t] == "None":
+                        metadata = {}
+                        metadata["RepetitionTime"] = np.float64(get_TR(scan))
+                    else:
+                        with open(templates[t]) as f:
+                            metadata = json.load(f)
+                else:
+                    # Fix metadata
+                    metadata = scan.get_metadata()
 
-            # Add task name
-            if "TaskName" not in metadata.keys():
-                metadata2["TaskName"] = "rest"
-            # Add slice timing
-            if "SliceTiming" not in metadata.keys():
-                metadata2["SliceTiming"] = get_slicetiming(scan, mode, ref, ascending=True)
+                metadata2 = {key: metadata[key] for key in keep_keys if key in metadata.keys()}
 
-            # Write json
-            with open(json_file, "w") as fo:
-                json.dump(metadata2, fo, sort_keys=True, indent=4)
+                # Functional scans
+                if suffix == "bold":
+                    # Add task name
+                    if "TaskName" not in metadata.keys():
+                        metadata2["TaskName"] = "rest"
+                    # Add slice timing
+                    if "SliceTiming" not in metadata.keys():
+                        metadata2["SliceTiming"] = get_slicetiming(scan, mode, ref, ascending=True)
+                    get_slicetiming(scan, mode, ref, ascending=True)
 
-        # Anatomical scans
-        scans = layout.get(subject=subj, extension=".nii.gz", suffix="T1w")
-
-        # DWi scans
-        scans = layout.get(subject=subj, extension=".nii.gz", suffix="dwi")
+                # Write json
+                with open(json_file, "w") as fo:
+                    json.dump(metadata2, fo, sort_keys=True, indent=4)
 
 
 def _get_parser():
@@ -114,17 +116,18 @@ def _get_parser():
         help="First slice",
     )
     parser.add_argument(
-        "-f",
-        "--func_template",
-        dest="func_template",
+        "-t",
+        "--templates",
+        dest="templates",
         required=False,
-        help="JSON functional template",
+        nargs="+",
+        help="JSON templates",
     )
     return parser
 
 
-def main(bids_dir, mode, ref, func_template):
-    fixjsons(bids_dir, mode, ref, func_template)
+def main(bids_dir, mode, ref, templates):
+    fixjsons(bids_dir, mode, ref, templates)
 
 
 def _main(argv=None):

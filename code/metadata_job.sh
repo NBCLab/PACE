@@ -14,7 +14,7 @@ pwd; hostname; date
 set -e
 
 # Submit the job using the variable DATA="data-name"
-# sbatch --job-name="jsons-CANN116" --export=DATA="CANN116" metadata_job.sh
+# sbatch --job-name="jsons-OPI105" --export=DATA="OPI105" metadata_job.sh
 
 #==============Shell script==============#
 #Load the software needed
@@ -26,7 +26,11 @@ PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 CODE_DIR="${DSETS_DIR}/code"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
+ANAT_TEMPLATE="/gpfs1/home/m/r/mriedel/pace/raw/OPI105_JaneJoseph/sourcedata/SCOR_MPRAGE.json"
 FUNC_TEMPLATE="/gpfs1/home/m/r/mriedel/pace/raw/OPI105_JaneJoseph/sourcedata/SCOR_RestingState.json"
+DWI_TEMPLATE="None"
+FMAP_TEMPLATE="/gpfs1/home/m/r/mriedel/pace/raw/OPI105_JaneJoseph/sourcedata/SCOR_rest_fieldmap.json"
+MAG_TEMPLATE="/gpfs1/home/m/r/mriedel/pace/raw/OPI105_JaneJoseph/sourcedata/SCOR_rest_magnitude.json"
 MODE="default"
 REF=1
 
@@ -35,7 +39,7 @@ cmd="python ${CODE_DIR}/metadata_fix.py \
       --bids_dir ${BIDS_DIR} \
       --mode ${MODE} \
       --ref ${REF} \
-      --func_template ${FUNC_TEMPLATE}"
+      --templates ${ANAT_TEMPLATE} ${FUNC_TEMPLATE} ${DWI_TEMPLATE} ${FMAP_TEMPLATE} ${MAG_TEMPLATE}"
 # Setup done, run the command
 echo Commandline: $cmd
 eval $cmd 

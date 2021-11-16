@@ -28,7 +28,7 @@ def get_echotime(nifti_file):
     return int(echo_time) / 1000
 
 
-def get_slicetiming(nifti_file, mode, ascending=True):
+def get_slicetiming(nifti_file, mode, ref, ascending=True):
     # Mode default = 1 3 5 ... 2 4 6 ...
     # Mode interleaved = 1 4 7 10 2 5 8 3 6 9
     TR = get_TR(nifti_file)
@@ -40,12 +40,18 @@ def get_slicetiming(nifti_file, mode, ascending=True):
     slicetiming = np.linspace(0, TR - sliceduration, nslices)
 
     if mode == "default":
-        order = list(range(0, nslices, 2)) + list(range(1, nslices, 2))
-    if mode == "interleaved":
-        idx = round(math.sqrt(nslices))
+        if ref == 0:
+            order = list(range(0, nslices, 2)) + list(range(1, nslices, 2))
+        else:
+            # ref == 1:
+            order = list(range(1, nslices, 2)) + list(range(0, nslices, 2))
+    else:
+        # mode == "interleaved":
         order = []
+        idx = round(math.sqrt(nslices))
         for i in range(idx):
             order = order + list(range(i, nslices, idx))
+
     slicetiming[order] = slicetiming.copy()
 
     if not ascending:
