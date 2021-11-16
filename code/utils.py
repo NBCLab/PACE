@@ -39,18 +39,20 @@ def get_slicetiming(nifti_file, mode, ref, ascending=True):
     sliceduration = TR / nslices
     slicetiming = np.linspace(0, TR - sliceduration, nslices)
 
-    if mode == "default":
+    if mode == "interleaved":
+        order = []
+        idx = round(math.sqrt(nslices))
+        for i in range(idx):
+            order = order + list(range(i, nslices, idx))
+    elif mode == "default":
         if ref == 0:
             order = list(range(0, nslices, 2)) + list(range(1, nslices, 2))
         else:
             # ref == 1:
             order = list(range(1, nslices, 2)) + list(range(0, nslices, 2))
     else:
-        # mode == "interleaved":
-        order = []
-        idx = round(math.sqrt(nslices))
-        for i in range(idx):
-            order = order + list(range(i, nslices, idx))
+        # mode == "sequential":
+        order = list(range(0, nslices, 1))
 
     slicetiming[order] = slicetiming.copy()
 
