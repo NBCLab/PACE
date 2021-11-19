@@ -2,8 +2,6 @@ import argparse
 import json
 import os
 import os.path as op
-import shutil
-import sys
 from glob import glob
 
 import nibabel as nib
@@ -109,7 +107,7 @@ def run_3dtproject(preproc_file, mask_file, confounds_file, dummy_scans, out_dir
             -ort {regressor_file} \
             -passband 0.01 0.10 \
             -mask {mask_file}"
-    print(cmd, flush=True)
+    print(f"\t{cmd}", flush=True)
     os.system(cmd)
 
     cmd = f"3dTproject \
@@ -120,7 +118,7 @@ def run_3dtproject(preproc_file, mask_file, confounds_file, dummy_scans, out_dir
             -ort {regressor_file} \
             -passband 0.01 0.10 \
             -mask {mask_file}"
-    print(cmd, flush=True)
+    print(f"\t{cmd}", flush=True)
     os.system(cmd)
 
     # Create json files with Sources and Description fields
