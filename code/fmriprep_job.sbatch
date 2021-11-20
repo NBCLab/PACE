@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=168:00:00
+#SBATCH --time=48:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
@@ -14,7 +14,7 @@
 pwd; hostname; date
 set -e
 
-# sbatch --array=1-$(( $( wc -l ../dset-ATS107/participants.tsv | cut -f1 -d' ' ) - 1 ))%4 --job-name="fmriprep-ATS107" --export=DATA="ATS107" fmriprep_job.sbatch
+# sbatch --array=1-$(( $( wc -l ../dset-OPI105/participants.tsv | cut -f1 -d' ' ) - 1 ))%4 --job-name="fmriprep-OPI105" --export=DATA="OPI105" fmriprep_job.sbatch
 
 #==============Shell script==============#
 #Load the software needed
@@ -48,7 +48,7 @@ SINGULARITY_CMD="singularity run --cleanenv \
       -B ${DERIVS_DIR}:/out \
       -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME} \
       -B ${SCRATCH_DIR}:/work \
-      -B ${FS_LICENSE}:/freesurfer
+      -B ${FS_LICENSE}:/freesurfer \
       $IMG_DIR/nipreps-fmriprep_20.2.5.sif"
 
 # Parse the participants.tsv file and extract one subject ID from the line corresponding to this SLURM task.
@@ -66,6 +66,8 @@ cmd="${SINGULARITY_CMD} /data \
       --nprocs ${SLURM_CPUS_PER_TASK} \
       --mem_mb ${mem_gb} \
       --output-spaces MNI152NLin2009cAsym:res-native anat:res-native func:res-native \
+      --ignore fieldmaps sbref t2w flair \
+      --debug compcor \
       --notrack \
       --no-submm-recon \
       --fs-license-file /freesurfer/license.txt"
