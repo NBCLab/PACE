@@ -83,7 +83,7 @@ def qcfc_plot(in_dir, subjects, qc):
         "highlow": "High-low motion\n" + r"${\Delta}z_{r}$",
     }
     YLIMS = {
-        "rsfc": (-1.0, 1.0),
+        "rsfc": (-1.5, 1.5),
         "qcrsfcD": (-1.0, 1.0),
         "qcrsfc": (-1.0, 1.0),
         "highlow": (-1.0, 1.0),
@@ -98,6 +98,7 @@ def qcfc_plot(in_dir, subjects, qc):
 
     for i_analysis, (analysis_type, label) in enumerate(METRIC_LABELS.items()):
         if analysis_type == "rsfc":
+            ymax = 0
             for subject in range(len(subjects)):
                 xlim = (-1, 1)
                 values = corr_mats[subject]
@@ -108,7 +109,8 @@ def qcfc_plot(in_dir, subjects, qc):
             ax.set_xlim(xlim)
             ax.set_ylabel("")
             ax.set_yticklabels("")
-            ax.vlines(x=0, ymin=0, ymax=values.max() + 0.05, colors="k", ls="-", lw=5)
+            ymax = max(ymax, values.max())
+            ax.vlines(x=0, ymin=0, ymax=ymax + 0.1, colors="k", ls="-", lw=5)
 
         elif analysis_type == "qcrsfcD":
             values = analysis_values["qcrsfc"].values
@@ -116,7 +118,8 @@ def qcfc_plot(in_dir, subjects, qc):
             # null_curve = null_curves["qcrsfc"][0]
 
             ax = sns.kdeplot(values, bw_method=0.1, fill=True, color="gray", ax=axes[i_analysis])
-            ax.vlines(x=0, ymin=0, ymax=2.2, colors="k", ls="-", lw=5)
+            ymin, ymax = ax.get_ylim()
+            ax.vlines(x=0, ymin=ymin, ymax=ymax + 0.1, colors="k", ls="-", lw=5)
 
             # Create unsmoothed null_curve
             mean_qcs = np.array([np.mean(subj_qc) for subj_qc in qc])
