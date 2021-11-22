@@ -64,7 +64,7 @@ def ks_test(x, y):
     return distance, pval
 
 
-def qcfc_plot(in_dir, subjects, qc):
+def qcfc_plot(in_dir, subjects, qc, mod):
     # Adapted from https://github.com/ME-ICA/ddmra/blob/main/ddmra/plotting.py
     """Plot the results for all three analyses from a workflow run and save to a file.
 
@@ -100,13 +100,12 @@ def qcfc_plot(in_dir, subjects, qc):
         if analysis_type == "rsfc":
             ymax = 0
             for subject in range(len(subjects)):
-                xlim = (-1, 1)
                 values = corr_mats[subject]
                 ax = sns.kdeplot(values, bw_method=0.1, fill=True, ax=axes[i_analysis])
             ax.set_xlabel(label, fontsize=32, labelpad=-30)
-            ax.set_xticks(xlim)
-            ax.set_xticklabels(xlim, fontsize=32)
-            ax.set_xlim(xlim)
+            ax.set_xticks(YLIMS[analysis_type])
+            ax.set_xticklabels(YLIMS[analysis_type], fontsize=32)
+            ax.set_xlim(YLIMS[analysis_type])
             ax.set_ylabel("")
             ax.set_yticklabels("")
             ymax = max(ymax, values.max())
@@ -142,9 +141,9 @@ def qcfc_plot(in_dir, subjects, qc):
                 fontsize=32,
             )
             ax.set_xlabel(label, fontsize=32, labelpad=-30)
-            ax.set_xticks(xlim)
-            ax.set_xticklabels(xlim, fontsize=32)
-            ax.set_xlim(xlim)
+            ax.set_xticks(YLIMS[analysis_type])
+            ax.set_xticklabels(YLIMS[analysis_type], fontsize=32)
+            ax.set_xlim(YLIMS[analysis_type])
             ax.set_ylabel("")
             ax.set_yticklabels("")
         else:
@@ -164,7 +163,7 @@ def qcfc_plot(in_dir, subjects, qc):
                 ax=axes[i_analysis],
             )
 
-    fig.savefig(op.join(in_dir, "new_analysis_results.png"), dpi=100)
+    fig.savefig(op.join(in_dir, f"{mod}_analysis_results.png"), dpi=100)
 
 
 def main(dset, subjects, n_jobs, qc_thresh):
@@ -210,6 +209,7 @@ def main(dset, subjects, n_jobs, qc_thresh):
         censor_files = glob(op.join(nuis_subj_dir, "*_scrubbing*.1D"))
         assert len(censor_files) == 1
         tr_censor = pd.read_csv(censor_files[0], header=None)
+        tr_censor_idx = tr_censor.index[tr_censor[0] == 1].tolist()
         tr_keep = tr_censor.index[tr_censor[0] == 0].tolist()
 
         confounds_df = pd.read_csv(confounds_file, sep="\t")
@@ -218,7 +218,7 @@ def main(dset, subjects, n_jobs, qc_thresh):
 
         preproc_qcs.append(qc)
         denoised_qcs.append(qc[dummy_scans:])
-        scrub_qcs.append(np.delete(qc[dummy_scans:], tr_keep))
+        scrub_qcs.append(np.delete(qc[dummy_scans:], tr_censor_idx))
 
         preproc_imgs.append(preproc_file)
         denoised_imgs.append(denoised_file)
@@ -236,23 +236,25 @@ def main(dset, subjects, n_jobs, qc_thresh):
         else:
             qc_list = preproc_qcs
 
-        print(f"\tRun QCFC workflow on {len(denoised_imgs)} subjects for {imgs}", flush=True)
-        print(f"\tUse {len(qc_list)} fd vectors", flush=True)
         assert len(imgs_dict[imgs]) == len(qc_list)
 
         out_dir = op.join(deriv_dir, "QCFC", imgs)
         os.makedirs(out_dir, exist_ok=True)
 
-        run_analyses(
-            imgs_dict[imgs],
-            qc_list,
-            out_dir=out_dir,
-            n_iters=10000,
-            n_jobs=n_jobs,
-            qc_thresh=qc_thresh,
-        )
+        analysis_results = op.join(out_dir, "analysis_results.png")
+        if not op.exists(analysis_results):
+            print(f"\tRun QCFC workflow on {len(denoised_imgs)} subjects for {imgs}", flush=True)
+            print(f"\tUse {len(qc_list)} fd vectors", flush=True)
+            run_analyses(
+                imgs_dict[imgs],
+                qc_list,
+                out_dir=out_dir,
+                n_iters=10000,
+                n_jobs=n_jobs,
+                qc_thresh=qc_thresh,
+            )
         # Create QC plots
-        qcfc_plot(out_dir, subjects, qc_list)
+        qcfc_plot(out_dir, subjects, qc_list, imgs)
 
 
 def _main(argv=None):
