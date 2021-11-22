@@ -33,6 +33,7 @@ PREPROC_DIR="${BIDS_DIR}/derivatives/fmriprep-20.2.5/fmriprep"
 DERIVS_DIR="${BIDS_DIR}/derivatives/3dtproject"
 mkdir -p ${SCRATCH_DIR}
 mkdir -p ${DERIVS_DIR}
+FD_THR=0.35
 
 # setenv
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
@@ -48,10 +49,11 @@ for subject in ${subjects[@]}; do
     # Run python script inside fmriprep environment
     cmd="${SHELL_CMD} python /code/3dTproject.py \
           --dset /data \
-          --subject ${subject}"
+          --subject ${subject}
+          --qc_thresh ${FD_THR}"
     # Setup done, run the command
     echo Commandline: $cmd
-    # eval $cmd 
+    eval $cmd 
 done
 
 # Perform QCFC analyses
@@ -59,8 +61,9 @@ cmd="python ${CODE_DIR}/qcfc.py \
       --dset ${BIDS_DIR} \
       --subjects ${subjects[@]} \
       --n_jobs ${SLURM_CPUS_PER_TASK} \
-      --qc_thresh 0.35"
+      --qc_thresh ${FD_THR}"
 # Setup done, run the command
+echo
 echo Commandline: $cmd
 eval $cmd 
 

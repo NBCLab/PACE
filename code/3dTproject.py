@@ -7,6 +7,7 @@ from glob import glob
 import nibabel as nib
 import numpy as np
 import pandas as pd
+from scipy.ndimage import binary_closing
 
 
 def _get_parser():
@@ -22,6 +23,12 @@ def _get_parser():
         dest="subject",
         required=True,
         help="Subject identifier, with the sub- prefix.",
+    )
+    parser.add_argument(
+        "--qc_thresh",
+        dest="qc_thresh",
+        required=True,
+        help="FD threshold",
     )
     return parser
 
@@ -72,7 +79,27 @@ def get_acompcor(confounds_file):
     return acompcor_arr
 
 
-def run_3dtproject(preproc_file, mask_file, confounds_file, dummy_scans, out_dir):
+def keep_trs(confounds_file, qc_thresh):
+    print("\tGet TRs to censor")
+    confounds_df = pd.read_csv(confounds_file, sep="\t")
+    qc_arr = confounds_df["framewise_displacement"].values
+    qc_arr = np.nan_to_num(qc_arr, 0)
+    threshold = 3
+
+    mask = qc_arr >= qc_thresh
+
+    K = np.ones(threshold)
+    dil = np.convolve(mask, K, mode="same") >= 1
+    dil_erd = np.convolve(dil, K, mode="same") >= threshold
+
+    prop_incl = np.sum(dil_erd) / qc_arr.shape[0]
+    print(f"\t\tPecentage of TRS flagged {round(prop_incl*100,2)}", flush=True)
+    out = np.zeros(qc_arr.shape[0])
+    out[dil_erd] = 1
+    return out
+
+
+def run_3dtproject(preproc_file, mask_file, confounds_file, dummy_scans, qc_thresh, out_dir):
     preproc_name = op.basename(preproc_file)
     prefix = preproc_name.split("desc-")[0].rstrip("_")
     preproc_json_file = preproc_file.replace(".nii.gz", ".json")
@@ -80,46 +107,67 @@ def run_3dtproject(preproc_file, mask_file, confounds_file, dummy_scans, out_dir
     # Determine output files
     denoised_file = op.join(out_dir, f"{prefix}_desc-aCompCor_bold.nii.gz")
     denoisedSM_file = op.join(out_dir, f"{prefix}_desc-aCompCorSM6_bold.nii.gz")
-
-    img = nib.load(preproc_file)
-    header = img.header
-    n_trs = header["dim"][4]
-
-    # Create regressor matrix
-    demeaning = np.ones(n_trs)
-    detrending = np.arange(n_trs)
-    motionpar = get_motionpar(confounds_file, derivatives=True)
-    acompcor = get_acompcor(confounds_file)
-    nuisance_regressors = np.column_stack((demeaning, detrending, motionpar, acompcor))
-
-    # Some fMRIPrep nuisance regressors have NaN in the first row (e.g., derivatives)
-    nuisance_regressors = np.nan_to_num(nuisance_regressors, 0)
-    nuisance_regressors = np.delete(nuisance_regressors, range(dummy_scans), axis=0)
+    scrub_file = op.join(out_dir, f"{prefix}_desc-aCompCorScrub_bold.nii.gz")
+    scrubSM_file = op.join(out_dir, f"{prefix}_desc-aCompCorSM6Scrub_bold.nii.gz")
 
     # Create regressor file
     regressor_file = op.join(out_dir, f"{prefix}_regressors.1D")
-    np.savetxt(regressor_file, nuisance_regressors, fmt="%.5f")
+    if not op.exists(regressor_file):
+        # Create regressor matrix
+        img = nib.load(preproc_file)
+        header = img.header
+        n_trs = header["dim"][4]
+        demeaning = np.ones(n_trs)
+        detrending = np.arange(n_trs)
+        motionpar = get_motionpar(confounds_file, derivatives=True)
+        acompcor = get_acompcor(confounds_file)
+        nuisance_regressors = np.column_stack((demeaning, detrending, motionpar, acompcor))
 
-    cmd = f"3dTproject \
-            -input {preproc_file}[{dummy_scans}..$] \
-            -polort 1 \
-            -prefix {denoised_file} \
-            -ort {regressor_file} \
-            -passband 0.01 0.10 \
-            -mask {mask_file}"
-    print(f"\t{cmd}", flush=True)
-    os.system(cmd)
+        # Some fMRIPrep nuisance regressors have NaN in the first row (e.g., derivatives)
+        nuisance_regressors = np.nan_to_num(nuisance_regressors, 0)
+        nuisance_regressors = np.delete(nuisance_regressors, range(dummy_scans), axis=0)
+        np.savetxt(regressor_file, nuisance_regressors, fmt="%.5f")
 
-    cmd = f"3dTproject \
-            -input {preproc_file}[{dummy_scans}..$] \
-            -polort 1 \
-            -blur 6 \
-            -prefix {denoisedSM_file} \
-            -ort {regressor_file} \
-            -passband 0.01 0.10 \
-            -mask {mask_file}"
-    print(f"\t{cmd}", flush=True)
-    os.system(cmd)
+    # Create censoring file
+    censor_file = op.join(out_dir, f"{prefix}_scrubbing{qc_thresh}.1D")
+    if not op.exists(censor_file):
+        tr_censor = keep_trs(confounds_file, qc_thresh)[dummy_scans:]
+        np.savetxt(censor_file, tr_censor, fmt="%d")
+        tr_keep = np.where(tr_censor == 0)[0].tolist()
+    else:
+        tr_censor = pd.read_csv(censor_file, header=None)
+        tr_keep = tr_censor.index[tr_censor[0] == 0].tolist()
+
+    if not op.exists(denoised_file):
+        cmd = f"3dTproject \
+                -input {preproc_file}[{dummy_scans}..$] \
+                -polort 1 \
+                -prefix {denoised_file} \
+                -ort {regressor_file} \
+                -passband 0.01 0.10 \
+                -mask {mask_file}"
+        print(f"\t{cmd}", flush=True)
+        os.system(cmd)
+    if not op.exists(scrub_file):
+        cmd = f"3dTcat -prefix {scrub_file} {denoised_file}'{tr_keep}'"
+        print(f"\t{cmd}", flush=True)
+        os.system(cmd)
+
+    if not op.exists(denoisedSM_file):
+        cmd = f"3dTproject \
+                -input {preproc_file}[{dummy_scans}..$] \
+                -polort 1 \
+                -blur 6 \
+                -prefix {denoisedSM_file} \
+                -ort {regressor_file} \
+                -passband 0.01 0.10 \
+                -mask {mask_file}"
+        print(f"\t{cmd}", flush=True)
+        os.system(cmd)
+    if not op.exists(scrubSM_file):
+        cmd = f"3dTcat -prefix {scrubSM_file} {denoisedSM_file}'{tr_keep}'"
+        print(f"\t{cmd}", flush=True)
+        os.system(cmd)
 
     # Create json files with Sources and Description fields
     # Load metadata for writing out later and TR now
@@ -149,13 +197,14 @@ def run_3dtproject(preproc_file, mask_file, confounds_file, dummy_scans, out_dir
             json.dump(json_info, fo, sort_keys=True, indent=4)
 
 
-def main(dset, subject):
+def main(dset, subject, qc_thresh):
     """Run denoising workflows on a given dataset."""
-    # Taken from Taylor's pipeline
+    # Taken from Taylor's pipeline: https://github.com/ME-ICA/ddmra
     deriv_dir = op.join(dset, "derivatives")
     nuis_dir = op.join(deriv_dir, "3dtproject")
     preproc_dir = op.join(deriv_dir, "fmriprep-20.2.5", "fmriprep")
     space = "MNI152NLin2009cAsym"
+    qc_thresh = float(qc_thresh)
     dummy_scans = 5
 
     preproc_subj_func_dir = op.join(preproc_dir, subject, "func")
@@ -183,8 +232,8 @@ def main(dset, subject):
     # ###################
     # Nuisance Regression
     # ###################
-    print(f"Denoising {preproc_file}")
-    run_3dtproject(preproc_file, mask_file, confounds_file, dummy_scans, nuis_subj_dir)
+    print(f"\tDenoising {preproc_file}")
+    run_3dtproject(preproc_file, mask_file, confounds_file, dummy_scans, qc_thresh, nuis_subj_dir)
 
 
 def _main(argv=None):
