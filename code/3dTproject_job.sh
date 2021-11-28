@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem-per-cpu=3gb
+#SBATCH --mem-per-cpu=4gb
 #SBATCH --partition=bluemoon
 # Outputs ----------------------------------
 #SBATCH --output=log/%x_%j.out   
@@ -14,7 +14,7 @@
 pwd; hostname; date
 set -e
 
-# sbatch --job-name="3dTproject-ATS107" --export=DATA="ATS107" 3dTproject_job.sh
+# sbatch --job-name="3dTproject-CANN122" --export=DATA="CANN122" 3dTproject_job.sh
 
 #==============Shell script==============#
 #Load the software needed
@@ -34,9 +34,7 @@ DERIVS_DIR="${BIDS_DIR}/derivatives/3dtproject"
 mkdir -p ${SCRATCH_DIR}
 mkdir -p ${DERIVS_DIR}
 FD_THR=0.35
-
-# setenv
-export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+DM_SCANS=5
 
 # List subjects with *desc-preproc_bold.nii.gz
 subjects=($(ls ${PREPROC_DIR}/sub-*/func/*task-rest_*space-MNI152NLin2009cAsym*_desc-preproc_bold.nii.gz | awk -F'/' '{print $(NF)}' | awk -F'_' '{print $1}' | uniq))
@@ -50,7 +48,9 @@ for subject in ${subjects[@]}; do
     cmd="${SHELL_CMD} python /code/3dTproject.py \
           --dset /data \
           --subject ${subject}
-          --qc_thresh ${FD_THR}"
+          --qc_thresh ${FD_THR}
+          --dummy_scans ${DM_SCANS} \
+          --n_jobs ${SLURM_CPUS_PER_TASK}"
     # Setup done, run the command
     echo Commandline: $cmd
     eval $cmd 
@@ -60,8 +60,9 @@ done
 cmd="python ${CODE_DIR}/qcfc.py \
       --dset ${BIDS_DIR} \
       --subjects ${subjects[@]} \
-      --n_jobs ${SLURM_CPUS_PER_TASK} \
-      --qc_thresh ${FD_THR}"
+      --qc_thresh ${FD_THR} \
+      --dummy_scans ${DM_SCANS} \
+      --n_jobs ${SLURM_CPUS_PER_TASK}"
 # Setup done, run the command
 echo
 echo Commandline: $cmd

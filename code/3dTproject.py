@@ -30,6 +30,18 @@ def _get_parser():
         required=True,
         help="FD threshold",
     )
+    parser.add_argument(
+        "--dummy_scans",
+        dest="dummy_scans",
+        required=True,
+        help="Dummy Scans",
+    )
+    parser.add_argument(
+        "--n_jobs",
+        dest="n_jobs",
+        required=True,
+        help="CPUs",
+    )
     return parser
 
 
@@ -131,6 +143,7 @@ def run_3dtproject(preproc_file, mask_file, confounds_file, dummy_scans, qc_thre
     # Create censoring file
     censor_file = op.join(out_dir, f"{prefix}_scrubbing{qc_thresh}.1D")
     if not op.exists(censor_file):
+        # Review this line!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         tr_censor = keep_trs(confounds_file, qc_thresh)[dummy_scans:]
         np.savetxt(censor_file, tr_censor, fmt="%d")
         tr_keep = np.where(tr_censor == 0)[0].tolist()
@@ -197,7 +210,7 @@ def run_3dtproject(preproc_file, mask_file, confounds_file, dummy_scans, qc_thre
             json.dump(json_info, fo, sort_keys=True, indent=4)
 
 
-def main(dset, subject, qc_thresh):
+def main(dset, subject, qc_thresh, dummy_scans, n_jobs):
     """Run denoising workflows on a given dataset."""
     # Taken from Taylor's pipeline: https://github.com/ME-ICA/ddmra
     deriv_dir = op.join(dset, "derivatives")
@@ -205,7 +218,8 @@ def main(dset, subject, qc_thresh):
     preproc_dir = op.join(deriv_dir, "fmriprep-20.2.5", "fmriprep")
     space = "MNI152NLin2009cAsym"
     qc_thresh = float(qc_thresh)
-    dummy_scans = 5
+    dummy_scans = int(dummy_scans)
+    os.system(f"export OMP_NUM_THREADS={n_jobs}")
 
     preproc_subj_func_dir = op.join(preproc_dir, subject, "func")
     nuis_subj_dir = op.join(nuis_dir, subject, "func")
