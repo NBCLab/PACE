@@ -31,6 +31,7 @@ def participants(bids_dir):
             sub_list.append(dir_name)
 
     df["participant_id"] = sub_list
+    df["exclude"] = [0] * len(sub_dirs)
     df.to_csv(op.join(bids_dir, "participants.tsv"), index=False, sep="\t")
 
 
