@@ -31,8 +31,12 @@ echo "Compress files for ${BIDS_DIR}"
 
 IMGs=($(find ${BIDS_DIR}/ -name *.nii))
 for IMG in ${IMGs[@]}; do
-    echo "Compressing file ${IMG}"
-	gzip ${IMG}
+    if [ ! -f "${IMG}.gz" ]; then 
+        echo "Compressing file ${IMG}"
+        gzip ${IMG}
+    else 
+        echo "skipping ${IMG}"
+    fi
 done
 
 echo "Compress file for ${DATA} with exit code $exitcode"
