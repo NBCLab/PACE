@@ -6,7 +6,7 @@ import bids
 import numpy as np
 from bids.layout import BIDSLayout
 
-from utils import get_slicetiming, get_TR
+from utils import get_nvol, get_slicetiming, get_TR
 
 bids.config.set_option("extension_initial_dot", True)
 
@@ -34,7 +34,7 @@ keep_keys = [
 ]
 
 
-def fixjsons(bids_dir, mode, ref, templates):
+def fixjsons(bids_dir, mode, ref, templates, multi_ses):
     """
     Fix *.json
 
@@ -44,6 +44,7 @@ def fixjsons(bids_dir, mode, ref, templates):
     """
     layout = BIDSLayout(bids_dir)
     subjects = sorted(layout.get_subjects())
+    multi_ses = eval(multi_ses)
 
     print(subjects, flush=True)
     for subj in subjects:
@@ -68,6 +69,18 @@ def fixjsons(bids_dir, mode, ref, templates):
                     if templates[t] == "None":
                         metadata = {}
                         metadata["RepetitionTime"] = np.float64(get_TR(scan))
+                        # For COC106
+                        """
+                        if suffix == "bold":
+                            nvol = get_nvol(scan)
+                            print(f"\t\t{nvol}", flush=True)
+                            if nvol <= 295:
+                                metadata["RepetitionTime"] = np.float64(2)
+                            else:
+                                metadata["RepetitionTime"] = np.float64(1)
+                        else:
+                            metadata["RepetitionTime"] = np.float64(get_TR(scan))
+                        """
                     else:
                         with open(templates[t]) as f:
                             metadata = json.load(f)
@@ -83,8 +96,10 @@ def fixjsons(bids_dir, mode, ref, templates):
                     if "TaskName" not in metadata.keys():
                         metadata2["TaskName"] = "rest"
                     # Add slice timing
-                    if "SliceTiming" not in metadata.keys():
-                        metadata2["SliceTiming"] = get_slicetiming(scan, mode, ref, ascending=True)
+                    # if "SliceTiming" not in metadata.keys():
+                    #    metadata2["SliceTiming"] = get_slicetiming(
+                    #        scan, mode, int(ref), ascending=True
+                    #    )
 
                 # Phasediff Fieldmaps
                 if suffix == "fieldmap":
@@ -93,11 +108,17 @@ def fixjsons(bids_dir, mode, ref, templates):
                         metadata2["Units"] = "Hz"
                     # Add IntendedFor
                     if "IntendedFor" not in metadata.keys():
-                        scan_name = op.basename(scan)
-                        scaname_list = scan_name.split("_")
-                        ses = scaname_list[1]
-                        intended_name = f"sub-{subj}_{ses}_task-rest_bold.nii.gz"
-                        intended_for = op.join(scaname_list[1], "func", intended_name)
+                        if multi_ses:
+                            print(f"\t{multi_ses}", flush=True)
+                            scan_name = op.basename(scan)
+                            scaname_list = scan_name.split("_")
+                            ses = scaname_list[1]
+                            intended_name = f"sub-{subj}_{ses}_task-rest_bold.nii.gz"
+                            intended_for = op.join(scaname_list[1], "func", intended_name)
+                        else:
+                            intended_name = f"sub-{subj}_task-rest_bold.nii.gz"
+                            intended_for = op.join("func", intended_name)
+
                         metadata2["IntendedFor"] = intended_for
 
                 # Write json
@@ -136,11 +157,19 @@ def _get_parser():
         nargs="+",
         help="JSON templates",
     )
+    parser.add_argument(
+        "-ms",
+        "--multi_ses",
+        dest="multi_ses",
+        default=False,
+        required=False,
+        help="Ses label",
+    )
     return parser
 
 
-def main(bids_dir, mode, ref, templates):
-    fixjsons(bids_dir, mode, ref, templates)
+def main(bids_dir, mode, ref, templates, multi_ses):
+    fixjsons(bids_dir, mode, ref, templates, multi_ses)
 
 
 def _main(argv=None):

@@ -19,6 +19,13 @@ def get_nslices(nifti_file):
     return header.get_data_shape()[2]
 
 
+def get_nvol(nifti_file):
+    # Looking for nvol in the nifti header
+    img = nib.load(nifti_file)
+    header = img.header
+    return header.get_data_shape()[3]
+
+
 def get_echotime(nifti_file):
     # Looking for nslices in the nifti header
     img = nib.load(nifti_file)

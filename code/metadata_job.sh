@@ -14,7 +14,7 @@ pwd; hostname; date
 set -e
 
 # Submit the job using the variable DATA="data-name"
-# sbatch --job-name="jsons-OPI105" --export=DATA="OPI105" metadata_job.sh
+# sbatch --job-name="jsons-ALC118" --export=DATA="ALC118" metadata_job.sh
 
 #==============Shell script==============#
 #Load the software needed
@@ -26,20 +26,23 @@ PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 CODE_DIR="${DSETS_DIR}/code"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
-ANAT_TEMPLATE="/gpfs1/home/m/r/mriedel/pace/raw/OPI105_JaneJoseph/sourcedata/SCOR_MPRAGE.json"
-FUNC_TEMPLATE="/gpfs1/home/m/r/mriedel/pace/raw/OPI105_JaneJoseph/sourcedata/SCOR_RestingState.json"
+ANAT_TEMPLATE="None"
+FUNC_TEMPLATE="None"
 DWI_TEMPLATE="None"
-FMAP_TEMPLATE="/gpfs1/home/m/r/mriedel/pace/raw/OPI105_JaneJoseph/sourcedata/SCOR_rest_fieldmap.json"
-MAG_TEMPLATE="/gpfs1/home/m/r/mriedel/pace/raw/OPI105_JaneJoseph/sourcedata/SCOR_rest_magnitude.json"
+FMAP_TEMPLATE="None"
+MAG_TEMPLATE="None"
 MODE="default"
+#MODE="sequential"
 REF=1
+MULTI_SES=False
 
 # Fix json files
 cmd="python ${CODE_DIR}/metadata_fix.py \
       --bids_dir ${BIDS_DIR} \
       --mode ${MODE} \
       --ref ${REF} \
-      --templates ${ANAT_TEMPLATE} ${FUNC_TEMPLATE} ${DWI_TEMPLATE} ${FMAP_TEMPLATE} ${MAG_TEMPLATE}"
+      --templates ${ANAT_TEMPLATE} ${FUNC_TEMPLATE} ${DWI_TEMPLATE} ${FMAP_TEMPLATE} ${MAG_TEMPLATE}
+      --multi_ses ${MULTI_SES}"
 # Setup done, run the command
 echo Commandline: $cmd
 eval $cmd 
