@@ -14,11 +14,12 @@
 pwd; hostname; date
 set -e
 
-# sbatch --array=1-$(( $( wc -l ../dset-OPI105/participants.tsv | cut -f1 -d' ' ) - 1 ))%4 --job-name="fmriprep-OPI105" --export=DATA="OPI105" fmriprep_job.sbatch
+# sbatch --array=1-$(( $( wc -l ../dset-OPI107/participants.tsv | cut -f1 -d' ' ) - 1 ))%5 --job-name="fmriprep-OPI107" --export=DATA="OPI107" fmriprep_job.sbatch
 
 #==============Shell script==============#
 #Load the software needed
-spack load singularity@3.7.1
+module load singularity/3.7.1
+# spack load singularity@3.7.1
 
 HOST_DIR="/gpfs1/home/m/r/mriedel"
 PROJECT="pace"

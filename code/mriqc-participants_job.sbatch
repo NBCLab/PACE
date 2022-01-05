@@ -14,11 +14,12 @@
 pwd; hostname; date
 set -e
 
-# sbatch --array=1-$(( $( wc -l ../dset-MSSM/participants.tsv | cut -f1 -d' ' ) - 1 ))%2 --job-name="mriqc-MSSM" --export=DATA="MSSM" mriqc-participants_job.sbatch
+# sbatch --array=1-$(( $( wc -l ../dset-COC106/participants.tsv | cut -f1 -d' ' ) - 1 ))%2 --job-name="mriqc-COC106" --export=DATA="COC106" mriqc-participants_job.sbatch
 
 #==============Shell script==============#
 #Load the software needed
-spack load singularity@3.7.1
+module load singularity/3.7.1
+#spack load singularity@3.7.1
 
 HOST_DIR="/gpfs1/home/m/r/mriedel"
 PROJECT="pace"
