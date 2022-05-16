@@ -68,36 +68,39 @@ def main(argv=None):
         work_dir = op.join(args.work_dir, 'dset', args.sub)
 
     shutil.copytree(data_dir, work_dir)
+    shutil.copyfile(op.join(args.bids_dir, 'dataset_description.json'), op.join(args.work_dir, 'dset', 'dataset_description.json'))
+    shutil.copyfile(op.join(args.bids_dir, '.bidsignore'), op.join(args.work_dir, 'dset', '.bidsignore'))
 
-    dwidenoise_file = 'dwidenoise_latest-2019-05-21-59c5d3873bda.img'
-    shutil.copyfile(op.join('/users/m/r/mriedel/pace/code/singularity-images', dwidenoise_file), op.join(args.work_dir, dwidenoise_file))
+    mriqc_file = 'poldracklab_mriqc_0.15.1.sif'
+    shutil.copyfile(op.join('/users/m/r/mriedel/pace/code/singularity-images', mriqc_file), op.join(args.work_dir, mriqc_file))
 
-    func_files = glob(op.join(work_dir, 'func/*rest*.nii.gz'))
-    for tmp_func_file in func_files:
-        cmd='singularity run {sing} -nthreads {n_proc} -force {tmp_func_file} {tmp_func_file}'.format(sing=op.join(args.work_dir, dwidenoise_file), n_proc=args.n_procs, tmp_func_file=tmp_func_file)
-        run(cmd)
+    if op.isdir(op.join(work_dir, 'dwi')):
+        shutil.rmtree(op.join(work_dir, 'dwi'))
 
-    fmriprep_file='poldracklab_fmriprep_1.5.0rc1.sif'
-    shutil.copyfile(op.join('/users/m/r/mriedel/pace/code/singularity-images', fmriprep_file), op.join(args.work_dir, fmriprep_file))
-
-    fs_license_file='fs_license.txt'
-    shutil.copyfile(op.join('/users/m/r/mriedel/pace/code', fs_license_file), op.join(args.work_dir, fs_license_file))
-
-    os.makedirs(op.join(args.work_dir, 'fmriprep-1.5.0'))
+    os.makedirs(op.join(args.work_dir, 'mriqc_0.15.1'))
 
     #if not op.isdir(op.join(args.work_dir, 'templateflow')):
     #    shutil.copytree('/users/m/r/mriedel/pace/code/templateflow', op.join(args.work_dir, 'templateflow'))
 
     #os.makedirs(op.join('/users/home/m/r/mriedel/.cache/templateflow'), exist_ok=True)
+    os.makedirs(op.join(args.work_dir, 'mriqc_0.15.1', 'logs'), exist_ok=True)
     #-B {templateflowdir}:$HOME/.cache/templateflow
     #templateflowdir=op.join(args.work_dir, 'templateflow'),
-    cmd='singularity run --cleanenv {sing} {work_dir_bids} {out_dir} participant --verbose -w {work_dir} --omp-nthreads {n_procs} --fs-license-file {fs_license} --notrack --output-spaces MNI152NLin2009cAsym:res-2 fsaverage5 --use-syn-sdc'.format(sing=op.join(args.work_dir, fmriprep_file), work_dir_bids=op.join(args.work_dir, 'dset'), out_dir=op.join(args.work_dir, 'fmriprep-1.5.0'), work_dir=op.join(args.work_dir, 'fmriprep-work'), n_procs=args.n_procs, fs_license=op.join(args.work_dir, fs_license_file)) #c
+    cmd = ('singularity run --cleanenv {sing} {bids} {out} participant --no-sub --verbose-reports '
+           '-w {work} --n_procs {n_procs} --correct-slice-timing '.format(sing=op.join(args.work_dir, mriqc_file),
+                                                   bids=op.join(args.work_dir, 'dset'),
+                                                   out=op.join(args.work_dir, 'mriqc_0.15.1'),
+                                                   work=op.join(args.work_dir, 'mriqc-work'),
+                                                   n_procs=args.n_procs))
+    print(cmd)
     run(cmd)
 
     if args.ses is None:
-        shutil.copytree(op.join(args.work_dir, 'fmriprep-1.5.0'), op.join(args.bids_dir, 'derivatives', 'dwidenoise-05.21.2019_fmriprep-1.5.0', args.sub))
+        os.makedirs(op.join(args.bids_dir, 'derivatives', 'mriqc_0.15.1'), exist_ok=True)
+        shutil.copytree(op.join(args.work_dir, 'mriqc_0.15.1'), op.join(args.bids_dir, 'derivatives', 'mriqc_0.15.1', args.sub))
     else:
-        shutil.copytree(op.join(args.work_dir, 'fmriprep-1.5.0'), op.join(args.bids_dir, 'derivatives', 'dwidenoise-05.21.2019_fmriprep-1.5.0', args.sub, args.ses))
+        os.makedirs(op.join(args.bids_dir, 'derivatives', 'mriqc_0.15.1', args.sub), exist_ok=True)
+        shutil.copytree(op.join(args.work_dir, 'mriqc_0.15.1'), op.join(args.bids_dir, 'derivatives', 'mriqc_0.15.1', args.sub, args.ses))
 
 
     shutil.rmtree(args.work_dir)

@@ -19,8 +19,12 @@ software/
 # HPC job files
 *.err
 *.out
-*/errorfiles
-*/outfiles
+dsets/code/*/errorfiles
+dsets/code/*/outfiles
+dsets/code/*/log
+dsets/code/log
+templates/*
+atlas/
 
 code/old
 old/
