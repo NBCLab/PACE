@@ -1,0 +1,6 @@
+#! /bin/bash
+
+function env_bidsify()
+{
+source /gpfs1/home/m/r/mriedel/pace/env/env_bidsify
+}
