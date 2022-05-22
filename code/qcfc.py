@@ -2,6 +2,7 @@ import argparse
 import math
 import os
 import os.path as op
+import sys
 from glob import glob
 
 import matplotlib.pyplot as plt
@@ -13,6 +14,8 @@ from ddmra import analysis, plot_analysis, run_analyses, utils
 from scipy.stats import ks_2samp, normaltest
 from sklearn.neighbors import KernelDensity
 
+from utils import get_nvol
+
 sns.set_style("white")
 
 
@@ -22,14 +25,46 @@ def _get_parser():
         "--dset",
         dest="dset",
         required=True,
-        help="Path to BIDS dataset",
+        help="Path to BIDS directory",
     )
     parser.add_argument(
-        "--subjects",
-        dest="subjects",
+        "--mriqc_dir",
+        dest="mriqc_dir",
         required=True,
+        help="Path to MRIQC directory",
+    )
+    parser.add_argument(
+        "--preproc_dir",
+        dest="preproc_dir",
+        required=True,
+        help="Path to fMRIPrep directory",
+    )
+    parser.add_argument(
+        "--clean_dir",
+        dest="clean_dir",
+        required=True,
+        help="Path to denoised data directory",
+    )
+    parser.add_argument(
+        "--qcfc_dir",
+        dest="qcfc_dir",
+        required=True,
+        help="Path to QCFC directory",
+    )
+    parser.add_argument(
+        "--sessions",
+        dest="sessions",
+        default=[None],
+        required=False,
         nargs="+",
-        help="List with subject IDs",
+        help="Sessions identifier, with the ses- prefix.",
+    )
+    parser.add_argument(
+        "--space",
+        dest="space",
+        default="MNI152NLin2009cAsym",
+        required=False,
+        help="Standard space, MNI152NLin2009cAsym",
     )
     parser.add_argument(
         "--qc_thresh",
@@ -42,6 +77,13 @@ def _get_parser():
         dest="dummy_scans",
         required=True,
         help="Dummy Scans",
+    )
+    parser.add_argument(
+        "--desc_list",
+        dest="desc_list",
+        required=True,
+        nargs="+",
+        help="Name of the output files in the order [Clean, Clean + Smooth]",
     )
     parser.add_argument(
         "--n_jobs",
@@ -71,7 +113,7 @@ def ks_test(x, y):
     return distance, pval
 
 
-def qcfc_plot(in_dir, subjects, qc, mod):
+def qcfc_plot(in_dir, n_images, qc):
     # Adapted from https://github.com/ME-ICA/ddmra/blob/main/ddmra/plotting.py
     """Plot the results for all three analyses from a workflow run and save to a file.
 
@@ -107,7 +149,7 @@ def qcfc_plot(in_dir, subjects, qc, mod):
         if analysis_type == "rsfc":
             xmax = 0
             xmin = 0
-            for subject in range(len(subjects)):
+            for subject in range(n_images):
                 values = corr_mats[subject]
                 ax = sns.kdeplot(values, bw_method=0.1, fill=True, ax=axes[i_analysis])
                 # print(f"Subject {subject}: {values.mean()}", flush=True)
@@ -185,105 +227,112 @@ def qcfc_plot(in_dir, subjects, qc, mod):
                 ax=axes[i_analysis],
             )
 
-    fig.savefig(op.join(in_dir, f"{mod}_analysis_results.png"), dpi=100)
+    fig.savefig(op.join(in_dir, "analysis_results.png"), dpi=100)
 
 
-def main(dset, subjects, qc_thresh, dummy_scans, n_jobs):
+def main(
+    dset,
+    mriqc_dir,
+    preproc_dir,
+    clean_dir,
+    qcfc_dir,
+    sessions,
+    space,
+    qc_thresh,
+    dummy_scans,
+    desc_list,
+    n_jobs,
+):
     """Run QCFC workflow on a given dataset."""
     # Taken from Taylor's pipeline
-    deriv_dir = op.join(dset, "derivatives")
-    nuis_dir = op.join(deriv_dir, "3dtproject")
-    preproc_dir = op.join(deriv_dir, "fmriprep-20.2.5", "fmriprep")
-    space = "MNI152NLin2009cAsym"
-    qc_thresh = float(qc_thresh)
     dummy_scans = int(dummy_scans)
+    qc_thresh = float(qc_thresh)
     n_jobs = int(n_jobs)
+    assert len(desc_list) == 2
 
-    # Get list of participants with good data
-    participants_file = op.join(dset, "participants.tsv")
-    participants_df = pd.read_table(participants_file)
-    subjects = participants_df.loc[
-        (participants_df["exclude"] == 0) & (participants_df["participant_id"].isin(subjects)),
-        "participant_id",
-    ].tolist()
+    if sessions[0] is None:
+        img_files = sorted(
+            glob(
+                op.join(
+                    clean_dir, "**", "func", f"*_space-{space}*_desc-{desc_list[0]}_bold.nii.gz"
+                ),
+            recursive=True)
+        )
+    else:
+        img_files = sorted([x for session in sessions for x in glob(
+                                op.join(
+                                    clean_dir,
+                                    "*",
+                                    session,
+                                    "func",
+                                    f"*_space-{space}*_desc-{desc_list[0]}_bold.nii.gz",
+                                )
+                            )]
+        )
 
-    preproc_qcs = []
-    denoised_qcs = []
-    scrub_qcs = []
-    preproc_imgs = []
-    denoised_imgs = []
-    scrub_imgs = []
-    for subject in subjects:
-        preproc_subj_func_dir = op.join(preproc_dir, subject, "func")
-        nuis_subj_dir = op.join(nuis_dir, subject, "func")
+    # TO-DO Use the exlcue from MRIQC here !!!!!!!!!!!!!!!!!!!!!!!!!!
+    runs_to_exclude_df = pd.read_csv(op.join(mriqc_dir, "runs_to_exclude_qcfc.tsv"), sep="\t")
+    runs_to_exclude = runs_to_exclude_df["bids_name"].tolist()
+    prefixes_tpl = tuple(runs_to_exclude)
+    img_clean_files = [x for x in img_files if not op.basename(x).startswith(prefixes_tpl)]
+
+    censored_qcs = []
+    for img_clean_file in img_clean_files:
+        # print(op.basename(img_clean_file), flush=True)
+        img_clean_name = op.basename(img_clean_file)
+        prefix = img_clean_name.split("space-")[0].rstrip("_")
+        subject = img_clean_name.split("_")[0]
+        temp_session = img_clean_name.split("_")[1]
+        if temp_session.startswith("ses-"):
+            preproc_subj_func_dir = op.join(preproc_dir, subject, temp_session, "func")
+            nuis_subj_dir = op.join(clean_dir, subject, temp_session, "func")
+        else:
+            preproc_subj_func_dir = op.join(preproc_dir, subject, "func")
+            nuis_subj_dir = op.join(clean_dir, subject, "func")
 
         # Collect important files
-        confounds_files = glob(op.join(preproc_subj_func_dir, "*_desc-confounds_timeseries.tsv"))
+        confounds_files = glob(
+            op.join(preproc_subj_func_dir, f"{prefix}*_desc-confounds_timeseries.tsv")
+        )
         assert len(confounds_files) == 1
         confounds_file = confounds_files[0]
 
-        preproc_files = glob(
-            op.join(preproc_subj_func_dir, f"*task-rest*_space-{space}*_desc-preproc_bold.nii.gz")
+        censor_files = glob(
+            op.join(nuis_subj_dir, f"{prefix}*_space-{space}*_censoring{qc_thresh}.1D")
         )
-        assert len(preproc_files) == 1
-        preproc_file = preproc_files[0]
-
-        denoised_files = glob(op.join(nuis_subj_dir, "*_desc-aCompCor_bold.nii.gz"))
-        assert len(denoised_files) == 1
-        denoised_file = denoised_files[0]
-
-        scrub_files = glob(op.join(nuis_subj_dir, "*_desc-aCompCorScrub_bold.nii.gz"))
-        assert len(scrub_files) == 1
-        scrub_file = scrub_files[0]
-
-        censor_files = glob(op.join(nuis_subj_dir, "*_scrubbing*.1D"))
         assert len(censor_files) == 1
         tr_censor = pd.read_csv(censor_files[0], header=None)
-        tr_censor_idx = tr_censor.index[tr_censor[0] == 1].tolist()
+        tr_censor_idx = tr_censor.index[tr_censor[0] == 0].tolist()
 
         confounds_df = pd.read_csv(confounds_file, sep="\t")
         qc = confounds_df["framewise_displacement"].values
         qc = np.nan_to_num(qc, 0)
 
-        preproc_qcs.append(qc)
-        denoised_qcs.append(qc[dummy_scans:])
-        scrub_qcs.append(np.delete(qc[dummy_scans:], tr_censor_idx))
+        censored_qc = np.delete(qc[dummy_scans:], tr_censor_idx)
+        assert get_nvol(img_clean_file) == len(censored_qc)
 
-        preproc_imgs.append(preproc_file)
-        denoised_imgs.append(denoised_file)
-        scrub_imgs.append(scrub_file)
+        censored_qcs.append(censored_qc)
 
     # ###################
     # QCFC analyses
     # ###################
-    imgs_dict = {"preproc": preproc_imgs, "denoised": denoised_imgs, "scrubbing": scrub_imgs}
-    for imgs in imgs_dict.keys():
-        if imgs == "denoised":
-            qc_list = denoised_qcs
-        elif imgs == "scrubbing":
-            qc_list = scrub_qcs
-        else:
-            qc_list = preproc_qcs
-
-        assert len(imgs_dict[imgs]) == len(qc_list)
-
-        out_dir = op.join(deriv_dir, "QCFC", imgs)
-        os.makedirs(out_dir, exist_ok=True)
-
-        analysis_results = op.join(out_dir, "analysis_results.png")
-        if not op.exists(analysis_results):
-            print(f"\tRun QCFC workflow on {len(denoised_imgs)} subjects for {imgs}", flush=True)
-            print(f"\tUse {len(qc_list)} fd vectors", flush=True)
-            run_analyses(
-                imgs_dict[imgs],
-                qc_list,
-                out_dir=out_dir,
-                n_iters=10000,
-                n_jobs=n_jobs,
-                qc_thresh=qc_thresh,
-            )
-        # Create QC plots
-        qcfc_plot(out_dir, subjects, qc_list, imgs)
+    assert len(img_clean_files) == len(censored_qcs)
+    os.makedirs(qcfc_dir, exist_ok=True)
+    analysis_results = op.join(qcfc_dir, "new_analysis_results.png")
+    if not op.exists(op.join(qcfc_dir, "null_smoothing_curves.npz")):
+        print(f"\tRun QCFC workflow on {len(img_clean_files)} subjects", flush=True)
+        print(f"\tUse {len(censored_qcs)} fd vectors", flush=True)
+        run_analyses(
+            img_clean_files,
+            censored_qcs,
+            out_dir=qcfc_dir,
+            n_iters=10000,
+            n_jobs=n_jobs,
+            qc_thresh=qc_thresh,
+        )
+    # Create QC plots
+    if not op.exists(analysis_results):
+        qcfc_plot(qcfc_dir, len(img_clean_files), censored_qcs)
 
 
 def _main(argv=None):

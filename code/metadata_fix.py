@@ -3,6 +3,7 @@ import json
 import os.path as op
 
 import bids
+import nibabel as nb
 import numpy as np
 from bids.layout import BIDSLayout
 
@@ -34,6 +35,17 @@ keep_keys = [
 ]
 
 
+def set_tr(img, tr):
+    # Taken from https://neurostars.org/t/bids-validator-error-tr-
+    # mismatch-between-nifti-header-and-json-file-and-bids-validator
+    # -is-somehow-finding-tr-0-best-solution/1799
+    header = img.header.copy()
+    header = img.header
+    header["pixdim"][4] = tr
+    print(header["pixdim"][4], flush=True)
+    return img.__class__(img.get_fdata().copy(), img.affine, header)
+
+
 def fixjsons(bids_dir, mode, ref, templates, multi_ses):
     """
     Fix *.json
@@ -48,7 +60,8 @@ def fixjsons(bids_dir, mode, ref, templates, multi_ses):
 
     print(subjects, flush=True)
     for subj in subjects:
-        for t, suffix in enumerate(["T1w", "bold", "dwi", "fieldmap", "magnitude"]):
+        # , "T1w", "dwi", "fieldmap", "magnitude"
+        for t, suffix in enumerate(["bold"]):
             print(f"Procesing {suffix}", flush=True)
             if suffix == "bold":
                 scans = layout.get(subject=subj, extension=".nii.gz", task="rest")
@@ -68,18 +81,24 @@ def fixjsons(bids_dir, mode, ref, templates, multi_ses):
 
                     if templates[t] == "None":
                         metadata = {}
-                        metadata["RepetitionTime"] = np.float64(get_TR(scan))
+                        # metadata["RepetitionTime"] = round(np.float64(get_TR(scan)), 4)
+                        metadata["RepetitionTime"] = np.float64(2.0)
                         # For COC106
                         """
+                        temp_bold = layout.get(subject=subj, extension=".nii.gz", task="rest")[0]
+                        bold_nvol = get_nvol(temp_bold)
                         if suffix == "bold":
-                            nvol = get_nvol(scan)
-                            print(f"\t\t{nvol}", flush=True)
-                            if nvol <= 295:
+                            print(f"\t\t{bold_nvol}", flush=True)
+                            if bold_nvol <= 295:
                                 metadata["RepetitionTime"] = np.float64(2)
                             else:
                                 metadata["RepetitionTime"] = np.float64(1)
                         else:
-                            metadata["RepetitionTime"] = np.float64(get_TR(scan))
+                            print(f"\t\t{bold_nvol}", flush=True)
+                            if bold_nvol <= 295:
+                                metadata["RepetitionTime"] = np.float64(0.3)
+                            else:
+                                metadata["RepetitionTime"] = np.float64(1.9)
                         """
                     else:
                         with open(templates[t]) as f:
@@ -96,10 +115,17 @@ def fixjsons(bids_dir, mode, ref, templates, multi_ses):
                     if "TaskName" not in metadata.keys():
                         metadata2["TaskName"] = "rest"
                     # Add slice timing
-                    # if "SliceTiming" not in metadata.keys():
-                    #    metadata2["SliceTiming"] = get_slicetiming(
-                    #        scan, mode, int(ref), ascending=True
-                    #    )
+                    if "SliceTiming" not in metadata.keys():
+                        metadata2["SliceTiming"] = get_slicetiming(
+                            scan, metadata["RepetitionTime"], mode, int(ref), ascending=True
+                        )
+
+                if "RepetitionTime" in metadata.keys():
+                    img = nb.load(scan)
+                    print(img.header["pixdim"][4], flush=True)
+                    if img.header["pixdim"][4] != (metadata2["RepetitionTime"],):
+                        fixed_img = set_tr(img, metadata2["RepetitionTime"])
+                        fixed_img.to_filename(scan)
 
                 # Phasediff Fieldmaps
                 if suffix == "fieldmap":

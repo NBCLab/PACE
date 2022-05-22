@@ -33,15 +33,16 @@ def nii2bids(bids_dir, raw_dir):
 
             for mod in modalities.keys():
                 print(f"Processing {sub} modality {mod}")
+
+                # Create Bids directory
+                img_bids_dir = op.join(bids_dir, sub, mod)
+                if op.exists(img_bids_dir):
+                    pass
+                else:
+                    os.makedirs(img_bids_dir)
+
                 in_files = glob(op.join(sub_raw_dir, mod, "*"))
                 for in_file in in_files:
-                    # Create Bids directory
-                    img_bids_dir = op.join(bids_dir, sub, mod)
-                    if op.exists(img_bids_dir):
-                        pass
-                    else:
-                        os.makedirs(img_bids_dir)
-
                     # Conform output name
                     orig_bids_name = os.path.basename(in_file)
                     base, ext = os.path.splitext(orig_bids_name)

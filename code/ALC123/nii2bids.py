@@ -59,6 +59,7 @@ def nii2bids(bids_dir, raw_dir):
                                 bids_name = f"{sub}_{modalities[mod][0]}{ext}"
                             elif "mag" in base:
                                 bids_name = f"{sub}_{modalities[mod][1]}{ext}"
+                            print(f"\t{in_file} -> {bids_name}", flush=True)
                         else:
                             bids_name = f"{sub}_{modalities[mod]}{ext}"
                         out_file = op.join(img_bids_dir, bids_name)

@@ -1,26 +1,28 @@
 #!/bin/bash
-#SBATCH --time=48:00:00
+#SBATCH --job-name="fmriprep"
+#SBATCH --time=30:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=4gb
-#SBATCH --partition=bigmemwk
+#SBATCH --mem-per-cpu=2gb
+#SBATCH --partition=bluemoon
 # Outputs ----------------------------------
-#SBATCH --output=log/%x_%A-%a.out   
-#SBATCH --error=log/%x_%A-%a.err   
+#SBATCH --output=log/%x/ALC134/%x-ALC134_%A-%a.out   
+#SBATCH --error=log/%x/ALC134/%x-ALC134_%A-%a.err   
 # ------------------------------------------
 
 
 pwd; hostname; date
 set -e
 
-# sbatch --array=1-$(( $( wc -l ../dset-OPI107/participants.tsv | cut -f1 -d' ' ) - 1 ))%5 --job-name="fmriprep-OPI107" --export=DATA="OPI107" fmriprep_job.sbatch
+# sbatch --array=2-$(( $( wc -l ../dset-ALC134/participants.tsv | cut -f1 -d' ' ) - 1 ))%5 fmriprep_job.sbatch
 
 #==============Shell script==============#
 #Load the software needed
 module load singularity/3.7.1
 # spack load singularity@3.7.1
 
+DATA="ALC134"
 HOST_DIR="/gpfs1/home/m/r/mriedel"
 PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
@@ -66,7 +68,7 @@ cmd="${SINGULARITY_CMD} /data \
       --omp-nthreads ${SLURM_CPUS_PER_TASK} \
       --nprocs ${SLURM_CPUS_PER_TASK} \
       --mem_mb ${mem_gb} \
-      --output-spaces MNI152NLin2009cAsym:res-native anat:res-native func:res-native \
+      --output-spaces MNI152NLin2009cAsym:res-native \
       --ignore fieldmaps sbref t2w flair \
       --debug compcor \
       --notrack \

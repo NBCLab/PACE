@@ -22,16 +22,17 @@ def nii2bids(bids_dir, raw_dir):
             # Collect anat and func
             modalities = {"anat": "T1w", "func": "task-rest_bold"}
             for mod in modalities.keys():
-                print(f"Processing {sub} modality {mod}", flush=True)
+                print(f"Processing {sub} modality {mod}")
+                # Create Bids directory
+                img_bids_dir = op.join(bids_dir, sub, mod)
+                if op.exists(img_bids_dir):
+                    pass
+                else:
+                    os.makedirs(img_bids_dir)
 
                 img_raw_dir = op.join(sub_raw_dir, mod)
                 in_files = glob(op.join(img_raw_dir, "*.nii*"))
                 for in_file in in_files:
-                    # Create Bids directory
-                    img_bids_dir = op.join(bids_dir, sub, mod)
-                    if not op.exists(img_bids_dir):
-                        os.makedirs(img_bids_dir)
-
                     # Conform output name
                     orig_bids_name = os.path.basename(in_file)
                     base, ext = os.path.splitext(orig_bids_name)
@@ -48,7 +49,7 @@ def nii2bids(bids_dir, raw_dir):
             # For DWI data
             dwi_dir = op.join(bids_dir, sub, "dwi")
             if os.path.exists(dwi_dir):
-                print(f"Processing {sub} modality dwi", flush=True)
+                print(f"Processing {sub} modality dwi")
 
                 # Collect dwi
                 dirs = ["A", "P"]

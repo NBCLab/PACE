@@ -1,7 +1,6 @@
 # Taken from NiMARE
 .vscode/
 data/
-<<<<<<< HEAD
 dsets/dset-*/derivatives
 dsets/dset-*/sub-*
 
@@ -10,23 +9,19 @@ dsets/dset-*/participants.tsv
 dsets/dset-*/CHANGES
 dsets/dset-*/.bidsignore
 dsets/dset-*/README
-dsets/dset-*/code/log
-dsets/dset-*/code/errorfiles
-dsets/dset-*/code/outfiles
+dsets/dset-*/code
+
 raw/
 scratch/
 software/
-=======
->>>>>>> 111b655f95c0105d07508a73881a6d30f434291a
 
 # HPC job files
 *.err
 *.out
-<<<<<<< HEAD
-dsets/code/*/errorfiles
-dsets/code/*/outfiles
-dsets/code/*/log
-dsets/code/log
+code/*/errorfiles
+code/*/outfiles
+code/log
+code/*/log
 templates/*
 atlas/
 
@@ -38,8 +33,6 @@ code/__MACOSX
 
 # ABCD
 analysis/*_cmd
-=======
->>>>>>> 111b655f95c0105d07508a73881a6d30f434291a
 
 # data
 *.nii*
@@ -152,8 +145,5 @@ prof/
 
 *.DS_Store
 *.orig
-<<<<<<< HEAD
 analysis/task/abcd_extract_eprime
 analysis/rest/Decon.REML_cmd
-=======
->>>>>>> 111b655f95c0105d07508a73881a6d30f434291a

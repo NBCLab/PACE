@@ -27,7 +27,7 @@ def nii2bids(bids_dir, raw_dir):
             sub_id = sub.split("-")[1]
             for ses in ["V1", "V2"]:
                 for mod in modalities.keys():
-                    print(f"Processing {sub} ses-{ses} modality {mod}", flush=True)
+                    print(f"Processing {sub} modality {mod}", flush=True)
                     if mod == "fmap":
                         in_files = glob(
                             op.join(

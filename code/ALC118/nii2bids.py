@@ -2,10 +2,10 @@ import argparse
 import gzip
 import os
 import os.path as op
+import zipfile
 import shutil
 from glob import glob
 from shutil import copyfile
-
 
 def nii2bids(bids_dir, raw_dir):
     """
@@ -16,62 +16,80 @@ def nii2bids(bids_dir, raw_dir):
     deriv_dir : str
     work_dir : str
     """
-    sub_raw_dirs = sorted(glob(op.join(raw_dir, "sub-*")))
-    for sub_raw_dir in sub_raw_dirs:
-        if op.isdir(sub_raw_dir):
-            sub = sub_raw_dir.split("/")[-1]
-            sub_id = sub.split("-")[-1]
+    modalities = {"anat": "T1w", "func": "taks-rest_bold"}
+    for idx, raw_mod in enumerate(["sourcedata_ALC118-TrIP", "ALC118_modafinil-resting_state"]):
+        for mod in modalities.keys():
+            if mod == "anat":
+                raw_mod =  "sourcedata_ALC118-TrIP" 
+            elif mod == "func": 
+                raw_mod = "ALC118_modafinil-resting_state"
+            sub_raw_dirs = sorted(glob(op.join(raw_dir, raw_mod, "*")))
+            print(sorted(os.listdir(raw_dir)))
+            print(len(sorted(os.listdir(raw_dir))))
+            for sub_raw_dir in sub_raw_dirs:
+                if op.isdir(sub_raw_dir):
+                    sub = sub_raw_dir.split("/")[-1]
+                    sub = f"sub-{sub}"
 
-            # Collect anat and func
-            modalities = {
-                "anat": "T1w",
-                "func": "task-rest_bold",
-                "fmap": ["fieldmap", "magnitude"],
-            }
-            for mod in modalities.keys():
-                print(f"Processing {sub} modality {mod}", flush=True)
-                if mod == "fmap":
-                    in_files = glob(
-                        op.join(
-                            raw_dir,
-                            "Couples_fieldmaps",
-                            "*",
-                            f"*_{sub_id}.nii*",
-                        )
-                    )
-                else:
-                    in_files = glob(op.join(sub_raw_dir, mod, "*.nii*"))
-
-                for in_file in in_files:
+                    # Collect anat and func
+                    print(f"Processing {sub} modality {mod}")
                     # Create Bids directory
                     img_bids_dir = op.join(bids_dir, sub, mod)
-                    if not op.exists(img_bids_dir):
+                    if op.exists(img_bids_dir):
+                        pass
+                    else :
                         os.makedirs(img_bids_dir)
 
-                    # Conform output name
-                    orig_bids_name = os.path.basename(in_file)
-                    base, ext = os.path.splitext(orig_bids_name)
-                    if ext == ".gz":
-                        _, ext2 = os.path.splitext(base)
-                        ext = ext2 + ext
-                        if mod == "fmap":
-                            if "fieldmap" in base:
-                                bids_name = f"{sub}_{modalities[mod][0]}{ext}"
-                            elif "mag" in base:
-                                bids_name = f"{sub}_{modalities[mod][1]}{ext}"
-                        else:
-                            bids_name = f"{sub}_{modalities[mod]}{ext}"
-                        out_file = op.join(img_bids_dir, bids_name)
-                        if not op.isfile(out_file):
-                            copyfile(in_file, out_file)
+                    if mod == "anat":
+                        img_raw_dir = op.join(sub_raw_dir, mod)
                     else:
-                        ext = ext + ".gz"
-                        bids_name = f"{sub}_{modalities[mod]}{ext}"
-                        out_file = op.join(img_bids_dir, bids_name)
-                        if not op.isfile(out_file):
-                            with open(in_file, "rb") as f_in:
-                                with gzip.open(out_file, "wb") as f_out:
-                                    shutil.copyfileobj(f_in, f_out)
+                        img_raw_dir = op.join(sub_raw_dir)
+
+                    in_files = glob(op.join(img_raw_dir, "*.nii*"))
+                    for in_file in in_files:
+                        # Conform output name
+                        orig_bids_name = os.path.basename(in_file)
+                        base, ext = os.path.splitext(orig_bids_name)
+                        if ext == ".gz":
+                            _, ext2 = os.path.splitext(base)
+                            ext = ext2 + ext
+                            bids_name = f"{sub}_{modalities[mod]}{ext}"
+                            out_file = op.join(img_bids_dir, bids_name)
+                            if not op.isfile(out_file):
+                                copyfile(in_file, out_file)
+                        else:
+                            ext = ext + ".gz"
+                            bids_name = f"{sub}_{modalities[mod]}{ext}"
+                            out_file = op.join(img_bids_dir, bids_name)
+                            if not op.isfile(out_file):
+                                with open(in_file, "rb") as f_in:
+                                    with gzip.open(out_file, "wb") as f_out:
+                                        shutil.copyfileobj(f_in, f_out)
+
+        '''# For DWI data
+        #dwi_dir = op.join(bids_dir, sub, "dwi")
+        #if os.path.exists(dwi_dir):
+            #print(f"Processing {sub} modality dwi")
+
+            # Collect dwi
+            #dirs = ["A", "P"]
+            #for dir in dirs:
+                #in_files = glob(op.join(dwi_dir, f"*_{dir}_*"))
+                #for in_file in in_files:
+                    #orig_bids_name = os.path.basename(in_file)
+                    #base, ext = os.path.splitext(orig_bids_name)
+                    #if ext == ".gz":
+                        #_, ext2 = os.path.splitext(base)
+                        #ext = ext2 + ext
+                    #if dir == "A":
+                        #encode = "pa"
+                    #elif dir == "P":
+                        #encode = "ap"
+
+                    #bids_name = f"{sub}_dir-{encode}_dwi{ext}"
+
+                    #out_file = op.join(dwi_dir, bids_name)
+                    #os.rename(in_file, out_file)'''
 
 
 def _get_parser():

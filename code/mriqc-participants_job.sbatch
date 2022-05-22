@@ -1,33 +1,36 @@
 #!/bin/bash
-#SBATCH --time=30:00:00
+#SBATCH --job-name="mriqc"
+#SBATCH --time=15:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=4gb
 #SBATCH --partition=bluemoon
 # Outputs ----------------------------------
-#SBATCH --output=log/%x_%A-%a.out   
-#SBATCH --error=log/%x_%A-%a.err   
+#SBATCH --output=log/%x/ALC134/%x-ALC134_%A-%a.out   
+#SBATCH --error=log/%x/ALC134/%x-ALC134_%A-%a.err   
 # ------------------------------------------
 
 
 pwd; hostname; date
 set -e
 
-# sbatch --array=1-$(( $( wc -l ../dset-COC106/participants.tsv | cut -f1 -d' ' ) - 1 ))%2 --job-name="mriqc-COC106" --export=DATA="COC106" mriqc-participants_job.sbatch
+# sbatch --array=2-$(( $( wc -l ../dset-ALC134/participants.tsv | cut -f1 -d' ' ) - 1 ))%2 mriqc-participants_job.sbatch
 
 #==============Shell script==============#
 #Load the software needed
 module load singularity/3.7.1
 #spack load singularity@3.7.1
+mriqc_ver=0.16.1
 
+DATA="ALC134"
 HOST_DIR="/gpfs1/home/m/r/mriedel"
 PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
 IMG_DIR="${HOST_DIR}/${PROJECT}/software"
-SCRATCH_DIR="${HOST_DIR}/${PROJECT}/scratch/dset-${DATA}/mriqc-0.16.1/mriqc_${SLURM_ARRAY_TASK_ID}"
-DERIVS_DIR="${BIDS_DIR}/derivatives/mriqc-0.16.1"
+SCRATCH_DIR="${HOST_DIR}/${PROJECT}/scratch/dset-${DATA}/mriqc-${mriqc_ver}/mriqc_${SLURM_ARRAY_TASK_ID}"
+DERIVS_DIR="${BIDS_DIR}/derivatives/mriqc-${mriqc_ver}"
 mkdir -p ${SCRATCH_DIR}
 mkdir -p ${DERIVS_DIR}
 

@@ -14,12 +14,12 @@ pwd; hostname; date
 set -e
 
 # Submit the job using the variable DATA="data-name"
-# sbatch --job-name="validator-CANN116" --export=DATA="CANN116" validator_job.sh
+# sbatch --job-name="validator-ALC" --export=DATA="ALC" validator_job.sh
 
 #==============Shell script==============#
 #Load the software needed
-#module load singularity-3.7.1-gcc-7.3.0-m27vdwx
-spack load singularity@3.7.1
+module load singularity/3.7.1
+# spack load singularity@3.7.1
 
 HOST_DIR="/gpfs1/home/m/r/mriedel"
 PROJECT="pace"

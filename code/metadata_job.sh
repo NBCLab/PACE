@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --time=03:00:00
+#SBATCH --time=30:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=1gb
-#SBATCH --partition=short
+#SBATCH --mem-per-cpu=4gb
+#SBATCH --partition=bluemoon
 # Outputs ----------------------------------
 #SBATCH --output=log/%x_%j.out   
 #SBATCH --error=log/%x_%j.err   
@@ -14,7 +14,7 @@ pwd; hostname; date
 set -e
 
 # Submit the job using the variable DATA="data-name"
-# sbatch --job-name="jsons-ALC118" --export=DATA="ALC118" metadata_job.sh
+# sbatch --job-name="jsons-ALC134" --export=DATA="ALC134" metadata_job.sh
 
 #==============Shell script==============#
 #Load the software needed
