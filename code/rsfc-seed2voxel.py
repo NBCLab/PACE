@@ -129,19 +129,25 @@ def norm_conn(out_bucket, out_bucket_z):
 
 def add_outlier(mriqc_dir, prefix):
 
-    runs_to_exclude_df = pd.read_csv(op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t")
+    runs_to_exclude_df = pd.read_csv(
+        op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t"
+    )
 
     if runs_to_exclude_df["bids_name"].str.contains(prefix).any():
         print(f"\t\t\t{prefix} already in runs_to_exclude.tsv")
     else:
-        runs_exclude_df = runs_to_exclude_df.append({"bids_name": f"{prefix}"}, ignore_index=True)
+        runs_exclude_df = runs_to_exclude_df.append(
+            {"bids_name": f"{prefix}"}, ignore_index=True
+        )
         runs_exclude_df = runs_exclude_df.drop_duplicates(subset=["bids_name"])
         runs_exclude_df["bids_name"].to_csv(
             op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t", index=False
         )
 
 
-def main(mriqc_dir, clean_dir, rsfc_dir, subject, sessions, space, desc_list, rois, n_jobs):
+def main(
+    mriqc_dir, clean_dir, rsfc_dir, subject, sessions, space, desc_list, rois, n_jobs
+):
     """Run denoising workflows on a given dataset."""
     os.system(f"export OMP_NUM_THREADS={n_jobs}")
     assert len(desc_list) == 2
@@ -162,7 +168,8 @@ def main(mriqc_dir, clean_dir, rsfc_dir, subject, sessions, space, desc_list, ro
         clean_subj_files = sorted(
             glob(
                 op.join(
-                    clean_subj_dir, f"*task-rest*_space-{space}*_desc-{desc_list[0]}_bold.nii.gz"
+                    clean_subj_dir,
+                    f"*task-rest*_space-{space}*_desc-{desc_list[0]}_bold.nii.gz",
                 )
             )
         )
@@ -177,9 +184,13 @@ def main(mriqc_dir, clean_dir, rsfc_dir, subject, sessions, space, desc_list, ro
             clean_subj_name = op.basename(clean_subj_file)
             prefix = clean_subj_name.split("desc-")[0].rstrip("_")
 
-            mask_files = sorted(glob(op.join(clean_subj_dir, f"{prefix}_desc-brain_mask.nii.gz")))
+            mask_files = sorted(
+                glob(op.join(clean_subj_dir, f"{prefix}_desc-brain_mask.nii.gz"))
+            )
             smooth_subj_files = sorted(
-                glob(op.join(clean_subj_dir, f"{prefix}_desc-{desc_list[1]}_bold.nii.gz"))
+                glob(
+                    op.join(clean_subj_dir, f"{prefix}_desc-{desc_list[1]}_bold.nii.gz")
+                )
             )
             reho_subj_files = sorted(
                 glob(op.join(clean_subj_dir, f"{prefix}_desc-REHOnorm_REHO.nii.gz"))
@@ -215,7 +226,9 @@ def main(mriqc_dir, clean_dir, rsfc_dir, subject, sessions, space, desc_list, ro
                 num = i + 1
                 roi_name = op.basename(roi)
                 roi_prefix = roi_name.split("_")[0].split("-")[1]
-                roi_res = op.join(rsfc_subj_dir, f"{prefix}_desc-{roi_prefix}_mask.nii.gz")
+                roi_res = op.join(
+                    rsfc_subj_dir, f"{prefix}_desc-{roi_prefix}_mask.nii.gz"
+                )
                 if not op.exists(roi_res):
                     roi_resample(roi, roi_res, clean_subj_file)
 
@@ -228,7 +241,9 @@ def main(mriqc_dir, clean_dir, rsfc_dir, subject, sessions, space, desc_list, ro
                     rsfc_subj_dir, f"{subj_prefix}_desc-{roi_prefix}_FALFF.txt"
                 )
                 # Average ReHo of each voxel within each ROIs
-                roi_subj_reho = op.join(rsfc_subj_dir, f"{subj_prefix}_desc-{roi_prefix}_REHO.txt")
+                roi_subj_reho = op.join(
+                    rsfc_subj_dir, f"{subj_prefix}_desc-{roi_prefix}_REHO.txt"
+                )
                 if not op.exists(roi_subj_timeseries):
                     ave_timeseries(roi_res, clean_subj_file, roi_subj_timeseries)
                 if not op.exists(roi_subj_falff):
@@ -238,7 +253,9 @@ def main(mriqc_dir, clean_dir, rsfc_dir, subject, sessions, space, desc_list, ro
 
                 roi_subj_timeseries_df = pd.read_csv(roi_subj_timeseries, header=None)
                 non_zero = len(
-                    roi_subj_timeseries_df.index[roi_subj_timeseries_df[0] != 0].tolist()
+                    roi_subj_timeseries_df.index[
+                        roi_subj_timeseries_df[0] != 0
+                    ].tolist()
                 )
                 if non_zero == 0:
                     exclude = True
@@ -264,11 +281,17 @@ def main(mriqc_dir, clean_dir, rsfc_dir, subject, sessions, space, desc_list, ro
 
             # Calculate connectivity using the GLM in 3dREMLfit
             bucket_subj_reml = op.join(rsfc_subj_dir, f"{subj_prefix}_bucketREML")
-            if (not op.exists(f"{bucket_subj_reml}+tlrc.BRIK")) and (op.exists(des_subj_matrix)):
-                connectivity(des_subj_matrix, smooth_subj_file, mask_file, bucket_subj_reml)
+            if (not op.exists(f"{bucket_subj_reml}+tlrc.BRIK")) and (
+                op.exists(des_subj_matrix)
+            ):
+                connectivity(
+                    des_subj_matrix, smooth_subj_file, mask_file, bucket_subj_reml
+                )
 
             # Normalize correlations
-            bucket_subj_reml_z = op.join(rsfc_subj_dir, f"{subj_prefix}_desc-norm_bucketREML")
+            bucket_subj_reml_z = op.join(
+                rsfc_subj_dir, f"{subj_prefix}_desc-norm_bucketREML"
+            )
             if (not op.exists(f"{bucket_subj_reml_z}+tlrc.BRIK")) and (
                 op.exists(f"{bucket_subj_reml}+tlrc.BRIK")
             ):

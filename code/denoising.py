@@ -8,11 +8,13 @@ from shutil import copyfile
 import numpy as np
 import pandas as pd
 
-from utils import enhance_censoring, fd_censoring, get_nvol, run_command
+from utils import enhance_censoring, fd_censoring, run_command
 
 
 def _get_parser():
-    parser = argparse.ArgumentParser(description="Run 3dTproject in fmriprep derivatives")
+    parser = argparse.ArgumentParser(
+        description="Run 3dTproject in fmriprep derivatives"
+    )
     parser.add_argument(
         "--mriqc_dir",
         dest="mriqc_dir",
@@ -134,14 +136,18 @@ def get_acompcor(confounds_file):
 
     return acompcor_arr
 
+
 def get_gsr(confounds_file):
     confounds_df = pd.read_csv(confounds_file, sep="\t")
 
     gsr_regressor = confounds_df["global_signal"].values
     return gsr_regressor
 
+
 def add_outlier(mriqc_dir, prefix):
-    runs_to_exclude_df = pd.read_csv(op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t")
+    runs_to_exclude_df = pd.read_csv(
+        op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t"
+    )
     runs_to_exclude = runs_to_exclude_df["bids_name"].tolist()
 
     if prefix in runs_to_exclude:
@@ -156,7 +162,13 @@ def add_outlier(mriqc_dir, prefix):
 
 
 def nuisance_reg(
-    preproc_fn, dummy_scans, denoised_fn, regressor_fn, mask_fn, smooth=False, band_pass=False
+    preproc_fn,
+    dummy_scans,
+    denoised_fn,
+    regressor_fn,
+    mask_fn,
+    smooth=False,
+    band_pass=False,
 ):
     cmd = f"3dTproject \
                 -input {preproc_fn}[{dummy_scans}..$] \
@@ -240,7 +252,15 @@ def normalize_metric(metric_nifti_file, metric_norm_file, mask_fn):
 
 
 def run_3dtproject(
-    mriqc_dir, preproc_file, mask_file, confounds_file, gsr, dummy_scans, fd_thresh, out_dir, desc_list
+    mriqc_dir,
+    preproc_file,
+    mask_file,
+    confounds_file,
+    gsr,
+    dummy_scans,
+    fd_thresh,
+    out_dir,
+    desc_list,
 ):
     preproc_name = op.basename(preproc_file)
     prefix = preproc_name.split("desc-")[0].rstrip("_")
@@ -295,11 +315,17 @@ def run_3dtproject(
     if len(tr_keep) < 100:
         exclude = True
         run_name = preproc_name.split("_space-")[0]
-        print(f"\t\tVolumes={len(tr_keep)}, adding run {run_name} to outliers", flush=True)
+        print(
+            f"\t\tVolumes={len(tr_keep)}, adding run {run_name} to outliers", flush=True
+        )
         add_outlier(mriqc_dir, run_name)
 
     # Denoise + band pass filter
-    if (not op.exists(denoisedFilt_file)) and (not op.exists(censFilt_file)) and (not exclude):
+    if (
+        (not op.exists(denoisedFilt_file))
+        and (not op.exists(censFilt_file))
+        and (not exclude)
+    ):
         nuisance_reg(
             preproc_file,
             dummy_scans,
@@ -316,7 +342,11 @@ def run_3dtproject(
         os.remove(denoisedFilt_file)
 
     # Denoise + band pass filter + smoothing
-    if (not op.exists(denoisedFiltSM_file)) and (not op.exists(censFiltSM_file)) and (not exclude):
+    if (
+        (not op.exists(denoisedFiltSM_file))
+        and (not op.exists(censFiltSM_file))
+        and (not exclude)
+    ):
         nuisance_reg(
             preproc_file,
             dummy_scans,
@@ -359,7 +389,11 @@ def run_3dtproject(
             band_pass=False,
         )
     amp_file = f"{rsfc_file}_amp.nii.gz"
-    if (not op.exists(amp_file)) and (not op.exists(fALFF_file)) and (op.exists(denoised_file)):
+    if (
+        (not op.exists(amp_file))
+        and (not op.exists(fALFF_file))
+        and (op.exists(denoised_file))
+    ):
         power_spectrum(denoised_file, rsfc_file, censor_file, mask_file)
         os.remove(denoised_file)
 
@@ -420,7 +454,7 @@ def main(
     fd_thresh = float(fd_thresh)
     dummy_scans = int(dummy_scans)
     os.system(f"export OMP_NUM_THREADS={n_jobs}")
-    gsr = True if 'TRUE'.startswith(str(gsr).upper()) else False
+    gsr = True if "TRUE".startswith(str(gsr).upper()) else False
 
     if sessions[0] is None:
         temp_ses = glob(op.join(preproc_dir, subject, "ses-*"))
@@ -437,19 +471,25 @@ def main(
 
         # Collect important files
         confounds_files = sorted(
-            glob(op.join(preproc_subj_func_dir, "*task-rest*_desc-confounds_timeseries.tsv"))
+            glob(
+                op.join(
+                    preproc_subj_func_dir, "*task-rest*_desc-confounds_timeseries.tsv"
+                )
+            )
         )
         preproc_files = sorted(
             glob(
                 op.join(
-                    preproc_subj_func_dir, f"*task-rest*_space-{space}*_desc-preproc_bold.nii.gz"
+                    preproc_subj_func_dir,
+                    f"*task-rest*_space-{space}*_desc-preproc_bold.nii.gz",
                 )
             )
         )
         mask_files = sorted(
             glob(
                 op.join(
-                    preproc_subj_func_dir, f"*task-rest*_space-{space}*_desc-brain_mask.nii.gz"
+                    preproc_subj_func_dir,
+                    f"*task-rest*_space-{space}*_desc-brain_mask.nii.gz",
                 )
             )
         )

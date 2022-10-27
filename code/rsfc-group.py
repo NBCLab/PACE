@@ -104,12 +104,18 @@ def conn_resample(roi_in, roi_out, template):
 
 def remove_ouliers(mriqc_dir, briks_files, mask_files):
 
-    runs_to_exclude_df = pd.read_csv(op.join(mriqc_dir, f"runs_to_exclude.tsv"), sep="\t")
+    runs_to_exclude_df = pd.read_csv(
+        op.join(mriqc_dir, f"runs_to_exclude.tsv"), sep="\t"
+    )
     runs_to_exclude = runs_to_exclude_df["bids_name"].tolist()
     prefixes_tpl = tuple(runs_to_exclude)
 
-    clean_briks_files = [x for x in briks_files if not op.basename(x).startswith(prefixes_tpl)]
-    clean_mask_files = [x for x in mask_files if not op.basename(x).startswith(prefixes_tpl)]
+    clean_briks_files = [
+        x for x in briks_files if not op.basename(x).startswith(prefixes_tpl)
+    ]
+    clean_mask_files = [
+        x for x in mask_files if not op.basename(x).startswith(prefixes_tpl)
+    ]
 
     return clean_briks_files, clean_mask_files
 
@@ -122,8 +128,12 @@ def remove_missingdat(participants_df, briks_files, mask_files):
 
     prefixes_tpl = tuple(subjects_to_keep)
 
-    clean_briks_files = [x for x in briks_files if op.basename(x).startswith(prefixes_tpl)]
-    clean_mask_files = [x for x in mask_files if op.basename(x).startswith(prefixes_tpl)]
+    clean_briks_files = [
+        x for x in briks_files if op.basename(x).startswith(prefixes_tpl)
+    ]
+    clean_mask_files = [
+        x for x in mask_files if op.basename(x).startswith(prefixes_tpl)
+    ]
 
     return clean_briks_files, clean_mask_files
 
@@ -169,7 +179,9 @@ def subj_mean_fd(preproc_subj_dir, subj_briks_files, subj_mean_fd_file):
         pd.read_csv(
             op.join(
                 preproc_subj_dir,
-                "{}_desc-confounds_timeseries.tsv".format(op.basename(x).split("_space-")[0]),
+                "{}_desc-confounds_timeseries.tsv".format(
+                    op.basename(x).split("_space-")[0]
+                ),
             ),
             sep="\t",
         )["framewise_displacement"].mean()
@@ -191,7 +203,9 @@ def writearg_1sample(onettest_args_fn, program):
             fo.write("-set Group\n")
 
 
-def append2arg_1sample(subject, subjAve_roi_coef_file, subjAve_roi_tstat_file, onettest_args_fn, program):
+def append2arg_1sample(
+    subject, subjAve_roi_coef_file, subjAve_roi_tstat_file, onettest_args_fn, program
+):
     coef_id = "{coef}'[0]'".format(coef=subjAve_roi_coef_file)
     if program == "3dttest++":
         with open(onettest_args_fn, "a") as fo:
@@ -202,7 +216,15 @@ def append2arg_1sample(subject, subjAve_roi_coef_file, subjAve_roi_tstat_file, o
             fo.write(f"{subject} {coef_id} {tstat_id}\n")
 
 
-def get_setAB(subject, subjAve_roi_coef_file, subjAve_roi_tstat_file, participants_df, setA, setB, program):
+def get_setAB(
+    subject,
+    subjAve_roi_coef_file,
+    subjAve_roi_tstat_file,
+    participants_df,
+    setA,
+    setB,
+    program,
+):
     sub_df = participants_df[participants_df["participant_id"] == subject]
     coef_id = "{coef}'[0]'".format(coef=subjAve_roi_coef_file)
     if program == "3dttest++":
@@ -255,7 +277,7 @@ def append2cov_1sample(subject, mean_fd, participants_df, onettest_cov_fn):
         fo.write("{}\n".format(" ".join(cov_variables_str)))
 
 
-def run_onesampttest(bucket_fn, mask_fn, covariates_file, args_file, program ,n_jobs):
+def run_onesampttest(bucket_fn, mask_fn, covariates_file, args_file, program, n_jobs):
     with open(args_file) as file:
         arg_list = file.readlines()
     arg_list_up = [x.replace("\n", "") for x in arg_list]
@@ -277,7 +299,7 @@ def run_onesampttest(bucket_fn, mask_fn, covariates_file, args_file, program ,n_
     os.system(cmd)
 
 
-def run_twosampttest(bucket_fn, mask_fn, covariates_file, args_file, program ,n_jobs):
+def run_twosampttest(bucket_fn, mask_fn, covariates_file, args_file, program, n_jobs):
     with open(args_file) as file:
         arg_list = file.readlines()
     arg_list_up = [x.replace("\n", "") for x in arg_list]
@@ -341,17 +363,27 @@ def main(
         briks_files = sorted(
             glob(
                 op.join(
-                    rsfc_subjs_dir, f"*task-rest*_space-{space}*_desc-norm_bucketREML+tlrc.HEAD"
+                    rsfc_subjs_dir,
+                    f"*task-rest*_space-{space}*_desc-norm_bucketREML+tlrc.HEAD",
                 )
             )
         )
         mask_files = sorted(
-            glob(op.join(rsfc_subjs_dir, f"*task-rest*_space-{space}*_desc-brain_mask.nii.gz"))
+            glob(
+                op.join(
+                    rsfc_subjs_dir, f"*task-rest*_space-{space}*_desc-brain_mask.nii.gz"
+                )
+            )
         )
 
         # Remove outliers using MRIQC metrics
-        print(f"Number of runs. Briks: {len(briks_files)}, Masks: {len(mask_files)}", flush=True)
-        clean_briks_files, clean_mask_files = remove_ouliers(mriqc_dir, briks_files, mask_files)
+        print(
+            f"Number of runs. Briks: {len(briks_files)}, Masks: {len(mask_files)}",
+            flush=True,
+        )
+        clean_briks_files, clean_mask_files = remove_ouliers(
+            mriqc_dir, briks_files, mask_files
+        )
         print(
             f"Runs after removing outliers data. Briks: {len(clean_briks_files)}, Masks: {len(clean_mask_files)}",
             flush=True,
@@ -371,7 +403,8 @@ def main(
 
         # Write group file
         clean_briks_fn = op.join(
-            rsfc_group_dir, f"sub-group{session_label}_task-rest_space-{space}_briks.txt"
+            rsfc_group_dir,
+            f"sub-group{session_label}_task-rest_space-{space}_briks.txt",
         )
         if not op.exists(clean_briks_fn):
             with open(clean_briks_fn, "w") as fo:
@@ -405,17 +438,20 @@ def main(
         os.makedirs(roi_dir, exist_ok=True)
         # Conform onettest_args_fn and twottest_args_fn
         onettest_args_fn = op.join(
-            roi_dir, f"sub-group{session_label}_task-rest_desc-1SampletTest{roi}_args.txt"
+            roi_dir,
+            f"sub-group{session_label}_task-rest_desc-1SampletTest{roi}_args.txt",
         )
         twottest_args_fn = op.join(
-            roi_dir, f"sub-group{session_label}_task-rest_desc-2SampletTest{roi}_args.txt"
+            roi_dir,
+            f"sub-group{session_label}_task-rest_desc-2SampletTest{roi}_args.txt",
         )
         if not op.exists(onettest_args_fn):
             writearg_1sample(onettest_args_fn, program)
 
         # Conform onettest_cov_fn and twottest_cov_fn
         onettest_cov_fn = op.join(
-            roi_dir, f"sub-group{session_label}_task-rest_desc-1SampletTest{roi}_cov.txt"
+            roi_dir,
+            f"sub-group{session_label}_task-rest_desc-1SampletTest{roi}_cov.txt",
         )
         if not op.exists(onettest_cov_fn):
             writecov_1sample(onettest_cov_fn)
@@ -480,11 +516,17 @@ def main(
             if not op.exists(f"{subjAve_roi_coef_file}+tlrc.BRIK"):
                 # Average coefficient across runs
                 subj_ave_roi(
-                    clean_subj_dir, subj_briks_files, subjAve_roi_coef_file, roi_coef_dict[roi]
+                    clean_subj_dir,
+                    subj_briks_files,
+                    subjAve_roi_coef_file,
+                    roi_coef_dict[roi],
                 )
                 # Average tstat across runs
                 subj_ave_roi(
-                    clean_subj_dir, subj_briks_files, subjAve_roi_tstat_file, roi_tstat_dict[roi]
+                    clean_subj_dir,
+                    subj_briks_files,
+                    subjAve_roi_tstat_file,
+                    roi_tstat_dict[roi],
                 )
 
             # Resample
@@ -505,18 +547,30 @@ def main(
                 subjAve_roi_tstat_file = subjAveRes_roi_tstat_file
 
             # Get subject level mean FD
-            mean_fd = subj_mean_fd(preproc_subj_dir, subj_briks_files, subj_mean_fd_file)
+            mean_fd = subj_mean_fd(
+                preproc_subj_dir, subj_briks_files, subj_mean_fd_file
+            )
 
             # Append subject specific info for onettest_args_fn
             if op.exists(onettest_args_fn):
                 append2arg_1sample(
-                    subject, f"{subjAve_roi_coef_file}+tlrc.BRIK", f"{subjAve_roi_tstat_file}+tlrc.BRIK", onettest_args_fn, program
+                    subject,
+                    f"{subjAve_roi_coef_file}+tlrc.BRIK",
+                    f"{subjAve_roi_tstat_file}+tlrc.BRIK",
+                    onettest_args_fn,
+                    program,
                 )
 
             # Get setA and setB to write twottest_args_fn
             # if not op.exists(twottest_args_fn):
             setA, setB = get_setAB(
-                subject, f"{subjAve_roi_coef_file}+tlrc.BRIK", f"{subjAve_roi_tstat_file}+tlrc.BRIK", participants_df, setA, setB, program
+                subject,
+                f"{subjAve_roi_coef_file}+tlrc.BRIK",
+                f"{subjAve_roi_tstat_file}+tlrc.BRIK",
+                participants_df,
+                setA,
+                setB,
+                program,
             )
 
             # Append subject specific info for onettest_cov_fn
