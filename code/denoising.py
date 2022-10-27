@@ -60,6 +60,13 @@ def _get_parser():
         help="FD threshold",
     )
     parser.add_argument(
+        "--GSR",
+        dest="gsr",
+        default=True,
+        required=True,
+        help="Include GSR",
+    )
+    parser.add_argument(
         "--dummy_scans",
         dest="dummy_scans",
         required=True,
@@ -233,7 +240,7 @@ def normalize_metric(metric_nifti_file, metric_norm_file, mask_fn):
 
 
 def run_3dtproject(
-    mriqc_dir, preproc_file, mask_file, confounds_file, dummy_scans, fd_thresh, out_dir, desc_list
+    mriqc_dir, preproc_file, mask_file, confounds_file, gsr, dummy_scans, fd_thresh, out_dir, desc_list
 ):
     preproc_name = op.basename(preproc_file)
     prefix = preproc_name.split("desc-")[0].rstrip("_")
@@ -241,7 +248,6 @@ def run_3dtproject(
 
     # Determine output files
     denoised_file = op.join(out_dir, f"{prefix}_desc-temp_bold.nii.gz")
-    # cens_file = op.join(out_dir, f"{prefix}_desc-tempCens_bold.nii.gz")
     reho_file = op.join(out_dir, f"{prefix}_desc-REHO_REHO")
     reho_norm_file = op.join(out_dir, f"{prefix}_desc-REHOnorm_REHO.nii.gz")
     rsfc_file = op.join(out_dir, f"{prefix}_desc-RSFC")
@@ -257,8 +263,11 @@ def run_3dtproject(
         # Create regressor matrix
         motionpar = get_motionpar(confounds_file, derivatives=True)
         acompcor = get_acompcor(confounds_file)
-        gsr = get_gsr(confounds_file)
-        nuisance_regressors = np.column_stack((motionpar, acompcor, gsr))
+        if gsr:
+            gsr = get_gsr(confounds_file)
+            nuisance_regressors = np.column_stack((motionpar, acompcor, gsr))
+        else:
+            nuisance_regressors = np.column_stack((motionpar, acompcor))
 
         # Some fMRIPrep nuisance regressors have NaN in the first row (e.g., derivatives)
         nuisance_regressors = np.nan_to_num(nuisance_regressors, 0)
@@ -266,9 +275,9 @@ def run_3dtproject(
         np.savetxt(regressor_file, nuisance_regressors, fmt="%.5f")
 
     # Create censoring file
-    fd_before = 1
+    fd_before = 0
     fd_contig = 0
-    fd_after = 1
+    fd_after = 0
     censor_file = op.join(out_dir, f"{prefix}_censoring{fd_thresh}.1D")
     if not op.exists(censor_file):
         fd_cens = fd_censoring(confounds_file, fd_thresh)
@@ -287,14 +296,6 @@ def run_3dtproject(
         exclude = True
         run_name = preproc_name.split("_space-")[0]
         print(f"\t\tVolumes={len(tr_keep)}, adding run {run_name} to outliers", flush=True)
-        add_outlier(mriqc_dir, run_name)
-
-    # Add preproc runs < 375 volumes to outlier file
-    preproc_nvol = get_nvol(preproc_file)
-    if preproc_nvol < 125:
-        exclude = True
-        run_name = preproc_name.split("_space-")[0]
-        print(f"\t\tVolumes={preproc_nvol}, adding run {run_name} to outliers", flush=True)
         add_outlier(mriqc_dir, run_name)
 
     # Denoise + band pass filter
@@ -409,6 +410,7 @@ def main(
     sessions,
     space,
     fd_thresh,
+    gsr,
     dummy_scans,
     desc_list,
     n_jobs,
@@ -418,6 +420,7 @@ def main(
     fd_thresh = float(fd_thresh)
     dummy_scans = int(dummy_scans)
     os.system(f"export OMP_NUM_THREADS={n_jobs}")
+    gsr = True if 'TRUE'.startswith(str(gsr).upper()) else False
 
     if sessions[0] is None:
         temp_ses = glob(op.join(preproc_dir, subject, "ses-*"))
@@ -474,6 +477,7 @@ def main(
                 preproc_file,
                 mask_file,
                 confounds_files[file],
+                gsr,
                 dummy_scans,
                 fd_thresh,
                 nuis_subj_dir,

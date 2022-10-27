@@ -178,21 +178,33 @@ def main(mriqc_dir, clean_dir, rsfc_dir, subject, sessions, space, desc_list, ro
             prefix = clean_subj_name.split("desc-")[0].rstrip("_")
 
             mask_files = sorted(glob(op.join(clean_subj_dir, f"{prefix}_desc-brain_mask.nii.gz")))
-            assert len(mask_files) == 1
             smooth_subj_files = sorted(
                 glob(op.join(clean_subj_dir, f"{prefix}_desc-{desc_list[1]}_bold.nii.gz"))
             )
+            reho_subj_files = sorted(
+                glob(op.join(clean_subj_dir, f"{prefix}_desc-REHOnorm_REHO.nii.gz"))
+            )
+            falff_subj_files = sorted(
+                glob(op.join(clean_subj_dir, f"{prefix}_desc-RSFCnorm_FALFF.nii.gz"))
+            )
+            assert len(mask_files) == 1
             assert len(smooth_subj_files) == 1
+            assert len(reho_subj_files) == 1
+            assert len(falff_subj_files) == 1
             smooth_subj_file = smooth_subj_files[0]
+            reho_subj_file = reho_subj_files[0]
+            falff_subj_file = falff_subj_files[0]
 
             mask_name = os.path.basename(mask_files[0])
             mask_file = op.join(rsfc_subj_dir, mask_name)
             copyfile(mask_files[0], mask_file)
 
-            print(f"\tProcessing {subject}, {session} files:", flush=True)
+            print(f"\tProcessing {subject}, {session}, {rois} files:", flush=True)
             print(f"\t\tClean:  {clean_subj_file}", flush=True)
             print(f"\t\tSmooth: {smooth_subj_file}", flush=True)
             print(f"\t\tMask:   {mask_file}", flush=True)
+            print(f"\t\tReHo:    {reho_subj_file}", flush=True)
+            print(f"\t\tfALFF:   {falff_subj_file}", flush=True)
 
             clean_subj_name = op.basename(clean_subj_file)
             subj_prefix = clean_subj_name.split("desc-")[0].rstrip("_")
@@ -211,8 +223,18 @@ def main(mriqc_dir, clean_dir, rsfc_dir, subject, sessions, space, desc_list, ro
                 roi_subj_timeseries = op.join(
                     rsfc_subj_dir, f"{subj_prefix}_desc-{roi_prefix}_timeseries.txt"
                 )
+                # Average fALFF of each voxel within each ROIs
+                roi_subj_falff = op.join(
+                    rsfc_subj_dir, f"{subj_prefix}_desc-{roi_prefix}_FALFF.txt"
+                )
+                # Average ReHo of each voxel within each ROIs
+                roi_subj_reho = op.join(rsfc_subj_dir, f"{subj_prefix}_desc-{roi_prefix}_REHO.txt")
                 if not op.exists(roi_subj_timeseries):
                     ave_timeseries(roi_res, clean_subj_file, roi_subj_timeseries)
+                if not op.exists(roi_subj_falff):
+                    ave_timeseries(roi_res, falff_subj_file, roi_subj_falff)
+                if not op.exists(roi_subj_reho):
+                    ave_timeseries(roi_res, reho_subj_file, roi_subj_reho)
 
                 roi_subj_timeseries_df = pd.read_csv(roi_subj_timeseries, header=None)
                 non_zero = len(

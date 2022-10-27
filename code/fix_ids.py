@@ -15,7 +15,7 @@ dsets_dirs = "/gpfs1/home/m/r/mriedel/pace/dsets"
 # studies = ["ALC", "ATS", "CANN", "COC", "COH", "OPI"]
 # studies = ["ALC"]
 # studies = ["ATS", "CANN", "COC", "COH", "OPI"]
-studies = ["COH"]
+studies = ["NIC123"]
 
 for study in studies:
     df = pd.DataFrame()
@@ -70,6 +70,8 @@ for study in studies:
                 elif dset_id == "OPI107":
                     temp_id = pt_id
                 elif dset_id == "OPI110":
+                    temp_id = "0" + pt_id
+                elif dset_id == "NIC123":
                     temp_id = "0" + pt_id
 
                 new_id = dset_id + temp_id

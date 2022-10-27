@@ -7,14 +7,14 @@
 #SBATCH --mem-per-cpu=4gb
 #SBATCH --partition=bluemoon
 # Outputs ----------------------------------
-#SBATCH --output=log/%x/OPI/%x-OPI_%j.out   
-#SBATCH --error=log/%x/OPI/%x-OPI_%j.err   
+#SBATCH --output=log/%x/COC/%x-COC_%j.out   
+#SBATCH --error=log/%x/COC/%x-COC_%j.err   
 # ------------------------------------------
 
 pwd; hostname; date
 set -e
 
-# Submit the job using the variable DATA="data-name"
+# Submit the job using the variable
 # sbatch mriqc-group_job.sh
 
 #==============Shell script==============#
@@ -22,11 +22,11 @@ set -e
 module load singularity/3.7.1
 mriqc_ver=0.16.1
 
-DATA="OPI"
+DATA="COC"
 HOST_DIR="/gpfs1/home/m/r/mriedel"
 PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
-CODE_DIR="${DSETS_DIR}/code"
+CODE_DIR="${HOST_DIR}/${PROJECT}/code"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
 IMG_DIR="${HOST_DIR}/${PROJECT}/software"
 SCRATCH_DIR="${HOST_DIR}/${PROJECT}/scratch/dset-${DATA}/mriqc-${mriqc_ver}/group"
