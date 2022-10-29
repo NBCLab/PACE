@@ -1,31 +1,34 @@
 #!/bin/bash
-#SBATCH --job-name=rsfc
-#SBATCH --time=29:30:00
+#SBATCH --job-name=insula
+#SBATCH --time=90:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=30
-#SBATCH --mem-per-cpu=1gb
-#SBATCH --partition=bluemoon
+#SBATCH --cpus-per-task=5
+#SBATCH --mem-per-cpu=4gb
+#SBATCH --partition=week
 # Outputs ----------------------------------
-#SBATCH --output=log/%x/group/insula/%x-COC100_%A-%a.out   
-#SBATCH --error=log/%x/group/insula/%x-COC100_%A-%a.err   
+#SBATCH --output=log/rsfc/group/%x/rsfc-rh-3dttest-ALC_%A-%a.out   
+#SBATCH --error=log/rsfc/group/%x/rsfc-rh-3dttest-ALC_%A-%a.err   
 # ------------------------------------------
 
 pwd; hostname; date
 set -e
 
+# sbatch --array=0 rsfc-group_job.sbatch
 # sbatch --array=1-2 rsfc-group_job.sbatch
+# In this case, ${SLURM_ARRAY_TASK_ID} indexes the ROI for a defined seed. 
 
 #==============Shell script==============#
 # Load the software needed
 module load singularity/3.7.1
 # spack load singularity@3.7.1 # Sometimes "module load" doesn't work.
 
-DATA="COC100"
+DATA="ALC"
 HOST_DIR="/gpfs1/home/m/r/mriedel"
 PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
+CODE_DIR="${HOST_DIR}/${PROJECT}/code"
 IMG_DIR="${HOST_DIR}/${PROJECT}/software"
 DERIVS_DIR="${BIDS_DIR}/derivatives"
 TEMPLATE_DIR="${HOST_DIR}/${PROJECT}/templates/${DATA}"
@@ -43,7 +46,7 @@ program=3dttest++
 # program=3dmema
 # program=3dlmer
 seed_region=insula
-hemis=lh
+hemis=rh
 template="sub-template_bucketREML+tlrc.BRIK"
 template_mask="sub-template_desc-brain_mask.nii.gz"
 
@@ -68,13 +71,13 @@ fi
 ROI=${ROIs[${SLURM_ARRAY_TASK_ID}]}
 SHELL_CMD="singularity exec --cleanenv \
     -B ${BIDS_DIR}:/data \
-    -B ${DSETS_DIR}/code:/code \
+    -B ${CODE_DIR}:/code \
     -B ${MRIQC_DIR}:/mriqc \
     -B ${FMRIPREP_DIR}:/fmriprep \
     -B ${CLEAN_DIR}:/clean \
     -B ${TEMPLATE_DIR}:/template_dir
     -B ${RSFC_DIR}:/rsfc \
-    $IMG_DIR/afni-22.0.20.sif"
+    $IMG_DIR/afni-22.3.01.sif"
 
 # Run python script inside afni-${afni_ver}.sif environment
 analysis="${SHELL_CMD} python /code/rsfc-group.py \

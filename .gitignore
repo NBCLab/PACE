@@ -1,6 +1,7 @@
 # Taken from NiMARE
 .vscode/
 data/
+dsets/dset-*
 dsets/dset-*/derivatives
 dsets/dset-*/sub-*
 
