@@ -1,22 +1,22 @@
 #!/bin/bash
-#SBATCH --job-name=insula
-#SBATCH --time=90:00:00
+#SBATCH --job-name=vmPFC
+#SBATCH --time=29:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=5
-#SBATCH --mem-per-cpu=4gb
-#SBATCH --partition=week
+#SBATCH --cpus-per-task=6
+#SBATCH --mem-per-cpu=8gb
+#SBATCH --partition=bluemoon
 # Outputs ----------------------------------
-#SBATCH --output=log/rsfc/group/%x/rsfc-rh-3dttest-ALC_%A-%a.out   
-#SBATCH --error=log/rsfc/group/%x/rsfc-rh-3dttest-ALC_%A-%a.err   
+#SBATCH --output=log/rsfc/group/%x/rsfc-3dttest-gsr-ALC_%A-%a.out   
+#SBATCH --error=log/rsfc/group/%x/rsfc-3dttest-gsr-ALC_%A-%a.err   
 # ------------------------------------------
 
 pwd; hostname; date
 set -e
 
-# sbatch --array=0 rsfc-group_job.sbatch
-# sbatch --array=1-2 rsfc-group_job.sbatch
-# In this case, ${SLURM_ARRAY_TASK_ID} indexes the ROI for a defined seed. 
+# In this case, ${SLURM_ARRAY_TASK_ID} indexes the ROI for a defined seed.
+# sbatch --array=0 rsfc-group_job.sbatch # Run the first elemt to generate the tables
+# sbatch --array=1-2 rsfc-group_job.sbatch # Wait ~5 min after submiting 0 to run the rest
 
 #==============Shell script==============#
 # Load the software needed
@@ -31,13 +31,13 @@ BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
 CODE_DIR="${HOST_DIR}/${PROJECT}/code"
 IMG_DIR="${HOST_DIR}/${PROJECT}/software"
 DERIVS_DIR="${BIDS_DIR}/derivatives"
-TEMPLATE_DIR="${HOST_DIR}/${PROJECT}/templates/${DATA}"
+TEMPLATE_DIR="${HOST_DIR}/${PROJECT}/templates"
 mriqc_ver=0.16.1
 fmriprep_ver=20.2.5
 afni_ver=22.0.20
 
-# gsr="-gsr"
-gsr=""
+gsr="-gsr"
+#gsr=""
 FMRIPREP_DIR="${DERIVS_DIR}/fmriprep-${fmriprep_ver}/fmriprep"
 MRIQC_DIR="${DERIVS_DIR}/mriqc-${mriqc_ver}"
 CLEAN_DIR="${DERIVS_DIR}/denoising${gsr}-${afni_ver}"
@@ -45,10 +45,10 @@ CLEAN_DIR="${DERIVS_DIR}/denoising${gsr}-${afni_ver}"
 program=3dttest++
 # program=3dmema
 # program=3dlmer
-seed_region=insula
-hemis=rh
-template="sub-template_bucketREML+tlrc.BRIK"
-template_mask="sub-template_desc-brain_mask.nii.gz"
+seed_region=vmPFC
+hemis=lh
+template="tpl-MNI152NLin2009cAsym_res-02_desc-brain_T1w.nii.gz"
+template_mask="tpl-MNI152NLin2009cAsym_res-02_desc-brain_mask.nii.gz"
 
 if [[ ${seed_region} ==  "vmPFC" ]]; then
     ROIs=("vmPFC1" "vmPFC2" "vmPFC3" "vmPFC4" "vmPFC5" "vmPFC6")

@@ -7,22 +7,22 @@
 #SBATCH --mem-per-cpu=2gb
 #SBATCH --partition=bluemoon
 # Outputs ----------------------------------
-#SBATCH --output=log/%x/ALC134/%x-ALC134_%A-%a.out   
-#SBATCH --error=log/%x/ALC134/%x-ALC134_%A-%a.err   
+#SBATCH --output=log/%x/ALC/%x-ALC_%A-%a.out   
+#SBATCH --error=log/%x/ALC/%x-ALC_%A-%a.err   
 # ------------------------------------------
-
 
 pwd; hostname; date
 set -e
 
-# sbatch --array=2-$(( $( wc -l ../dset-ALC134/participants.tsv | cut -f1 -d' ' ) - 1 ))%5 fmriprep_job.sbatch
+# sbatch --array=1 fmriprep_job.sbatch
+# sbatch --array=2-$(( $( wc -l ../dsets/dset-ALC/participants.tsv | cut -f1 -d' ' ) - 1 ))%5 fmriprep_job.sbatch
 
 #==============Shell script==============#
 #Load the software needed
 module load singularity/3.7.1
 # spack load singularity@3.7.1
 
-DATA="ALC134"
+DATA="ALC"
 HOST_DIR="/gpfs1/home/m/r/mriedel"
 PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
@@ -38,7 +38,6 @@ TEMPLATEFLOW_HOST_HOME=${HOME}/.cache/templateflow
 FMRIPREP_HOST_CACHE=${HOME}/.cache/fmriprep
 mkdir -p ${TEMPLATEFLOW_HOST_HOME}
 mkdir -p ${FMRIPREP_HOST_CACHE}
-
 
 # Make sure FS_LICENSE is defined in the container.
 FS_LICENSE="/gpfs1/home/m/r/mriedel/pace/software/freesurfer"
@@ -74,6 +73,7 @@ cmd="${SINGULARITY_CMD} /data \
       --notrack \
       --no-submm-recon \
       --fs-license-file /freesurfer/license.txt"
+# --reports-only
 
 # Setup done, run the command
 echo Running task ${SLURM_ARRAY_TASK_ID}
@@ -83,7 +83,7 @@ exitcode=$?
 
 # Output results to a table
 echo "sub-$subject   ${SLURM_ARRAY_TASK_ID}    $exitcode" \
-      >> ${BIDS_DIR}/code/log/${SLURM_JOB_NAME}.${SLURM_ARRAY_JOB_ID}.tsv
+      >> ${HOST_DIR}/${PROJECT}/code/log/${SLURM_JOB_NAME}.${SLURM_ARRAY_JOB_ID}.tsv
 echo Finished tasks ${SLURM_ARRAY_TASK_ID} with exit code $exitcode
 exit $exitcode
 

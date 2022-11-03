@@ -1,32 +1,33 @@
 import argparse
-import json
-import os
-import os.path as op
-import sys
-import matplotlib.image as mpimg
-from matplotlib import pyplot
-from glob import glob
-from shutil import copyfile
 
 import nibabel as nib
 import numpy as np
-import pandas as pd
-from nilearn import image, masking, plotting
+from nilearn import image, plotting
+import matplotlib.pyplot as plt
 
 
 def _get_parser():
     parser = argparse.ArgumentParser(description="Plot result image")
     parser.add_argument(
-        "--result_3dmema",
-        dest="result_3dmema",
+        "--results",
+        dest="results",
         required=True,
-        help="Path to result_3dmema",
+        nargs="+",
+        help="Path to results images",
     )
     parser.add_argument(
-        "--result_3dttest",
-        dest="result_3dttest",
+        "--outputs",
+        dest="outputs",
         required=True,
-        help="Path to result_3dttest",
+        nargs="+",
+        help="Path to outputs pngs",
+    )
+    parser.add_argument(
+        "--map_types",
+        dest="map_types",
+        required=True,
+        nargs="+",
+        help="Map types",
     )
     parser.add_argument(
         "--template_img",
@@ -35,76 +36,139 @@ def _get_parser():
         help="Path to template_img",
     )
     parser.add_argument(
-        "--out_3dmema",
-        dest="out_3dmema",
+        "--template_mask",
+        dest="template_mask",
         required=True,
-        help="Path to out_3dmema",
-    )
-    parser.add_argument(
-        "--out_3dttest",
-        dest="out_3dttest",
-        required=True,
-        help="Path to out_3dttest",
+        help="Path to template mask",
     )
     return parser
 
-def trim_image(img=None, tol=1, fix=True):
-    if fix:
-        mask = img != tol
-    else:
-        mask = img <= tol
-    if img.ndim == 3:
-        mask = mask.any(2)
-    mask0, mask1 = mask.any(0), mask.any(1)
-    return img[np.ix_(mask1, mask0)]
 
+def main(results, outputs, map_types, template_img, template_mask):
+    template_mask_img = nib.load(template_mask)
+    mask_data = template_mask_img.get_fdata().astype(bool)
 
-def main(result_3dmema, result_3dttest, template_img, out_3dmema, out_3dttest):
-
-    img = nib.load(result_3dmema)
-    cut_slices = plotting.find_cuts.find_xyz_cut_coords(img, None, None)
-    print(cut_slices, flush=True)
-    
-    in_images = [result_3dmema, result_3dttest]
-    out_images = [out_3dmema, out_3dttest]
-
-    for i, in_image in enumerate(in_images):
+    get_cut = True
+    display = None
+    cut_slices = [0, 0, 0]
+    for i, in_image in enumerate(results):
         img = nib.load(in_image)
+        data = img.get_fdata()
+        new_data = data.copy()
+        new_data[new_data > 13] = 13
+        new_data[new_data < -13] = -13
 
-        if np.all((img.get_fdata() == 0)):
+        if np.all((new_data == 0)):
             print("\t\tNo significant clusters", flush=True)
-            quit()
+            _min = 0
+        elif map_types[i] != "binary":
+            _min = np.min(np.abs(new_data[np.nonzero(new_data)]))
+            if _min < 1:
+                _min = 0.5
+            print(f"\t\t{_min}", flush=True)
+
+        new_img = nib.Nifti1Image(new_data, img.affine, img.header)
+
+        bg_img_obj = nib.load(template_img)
+        if map_types[i] == "binary":
+            img_res_obj = image.resample_to_img(new_img, bg_img_obj, interpolation="nearest")
         else:
-            min = np.min(np.abs(img.get_fdata()[np.nonzero(img.get_fdata())]))
-            if min < 1:
-                min = 1
-            print(f"\t\t{min}", flush=True)
+            img_res_obj = image.resample_to_img(new_img, bg_img_obj)
+        data_res = img_res_obj.get_fdata()
 
-        bg_img_obj = image.load_img(template_img)
-        affine, shape = bg_img_obj.affine, bg_img_obj.shape
-        img_obj = image.load_img(img)
-        img_res_obj = image.resample_img(img_obj, affine, shape[:3])
+        # Threshold after resampling to avoid interpolation artefacts
+        if (map_types[i] != "effect") and (map_types[i] != "binary"):
+            if _min == 0:
+                data_res[data_res != 0] = 0
+            else:
+                data_res[((0 < data_res) & (data_res < _min))] = 0
+                data_res[((-_min > data_res) & (data_res > 0))] = 0
+
+        data_res[data_res > 13] = 13
+        data_res[data_res < -13] = -13
+        data_res[~mask_data] = 0
+
+        new_img_res = nib.Nifti1Image(data_res, img_res_obj.affine, img_res_obj.header)
+
+        if (_min != 0) and get_cut:
+            cut_slices = plotting.find_cuts.find_xyz_cut_coords(new_img_res, None, None)
+            get_cut = False
+        elif (_min == 0) and get_cut: 
+            cut_slices = plotting.find_cuts.find_xyz_cut_coords(new_img_res, None, None)
+
+        print(cut_slices, flush=True)
+
         # cmap=color_dict[analysis],
-        plotting.plot_stat_map(
-            img_res_obj,
-            bg_img=template_img,
-            output_file=out_images[i],
-            colorbar=True,
-            threshold=min,
-            annotate=True,
-            draw_cross=False,
-            black_bg=False,
-            symmetric_cbar="auto",
-            dim=-0.35,
-            cut_coords=cut_slices,
-            display_mode="ortho",
-            vmax=None,
-            resampling_interpolation="continuous",
-        )
-
-        # img1 = mpimg.imread(out_img)
-        # img1 = trim_image(img=img1, tol=1, fix=True)
-        # pyplot.imsave(out_img, img1)
+        if map_types[i] == "binary":
+            display = plotting.plot_roi(
+                new_img_res,
+                bg_img=template_img,
+                colorbar=True,
+                annotate=True,
+                draw_cross=False,
+                black_bg=False,
+                dim=0,
+                cut_coords=cut_slices,
+                display_mode="ortho",
+                vmax=None,
+            )
+        elif map_types[i] == "effect":
+            display = plotting.plot_stat_map(
+                new_img_res,
+                bg_img=template_img,
+                colorbar=True,
+                vmax=0.3,
+                alpha=0.8,
+                cmap="coolwarm",
+                annotate=True,
+                draw_cross=False,
+                black_bg=False,
+                symmetric_cbar="auto",
+                dim=0,
+                cut_coords=cut_slices,
+                display_mode="ortho",
+            )
+        elif _min > 0:
+            display = plotting.plot_stat_map(
+                new_img_res,
+                bg_img=template_img,
+                colorbar=True,
+                threshold=_min,
+                annotate=True,
+                draw_cross=False,
+                black_bg=False,
+                symmetric_cbar="auto",
+                dim=0,
+                cut_coords=cut_slices,
+                display_mode="ortho",
+                vmax=None,
+            )
+        elif _min == 0:
+            if display is not None:
+                display.close()
+                display = None
+            display = plotting.plot_stat_map(
+                new_img_res,
+                bg_img=template_img,
+                output_file=None,
+                colorbar=False,
+                annotate=False,
+                draw_cross=False,
+                black_bg=False,
+                dim=0,
+                display_mode="ortho",
+                vmax=None,
+            )
+            # -0.35
+            # display = plt.figure()
+            # plt.clf()
+            # plt.close()
+            # ha='center', va='center',
+            text_kwargs = dict(ha='center', va='center', fontsize=28, color='r')
+            plt.text(-0.5, 0.5, 'No Significant Clusters', **text_kwargs)
+        display.savefig(outputs[i], dpi=1000)
+        display.close()
+        display = None
 
 
 def _main(argv=None):

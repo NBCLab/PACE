@@ -121,8 +121,8 @@ def remove_ouliers(mriqc_dir, briks_files, mask_files):
 
 
 def remove_missingdat(participants_df, briks_files, mask_files):
-    if 'session' in participants_df.columns:
-        participants_df = participants_df.drop(columns=['session'])
+    if "session" in participants_df.columns:
+        participants_df = participants_df.drop(columns=["session"])
 
     participants_df = participants_df.dropna()
     subjects_to_keep = participants_df["participant_id"].tolist()
@@ -229,17 +229,17 @@ def get_setAB(
     sub_df = participants_df[participants_df["participant_id"] == subject]
     coef_id = "{coef}'[0]'".format(coef=subjAve_roi_coef_file)
     if program == "3dttest++":
-        if sub_df["group"].values[0] == "case":
+        if sub_df["group"].values[0] == "control":
             setA.append(f"{subject} {coef_id}\n")
-        elif sub_df["group"].values[0] == "control":
+        elif sub_df["group"].values[0] == "case":
             setB.append(f"{subject} {coef_id}\n")
         else:
             pass
     elif program == "3dmema":
         tstat_id = "{tstat}'[0]'".format(tstat=subjAve_roi_tstat_file)
-        if sub_df["group"].values[0] == "case":
+        if sub_df["group"].values[0] == "control":
             setA.append(f"{subject} {coef_id} {tstat_id}\n")
-        elif sub_df["group"].values[0] == "control":
+        elif sub_df["group"].values[0] == "case":
             setB.append(f"{subject} {coef_id} {tstat_id}\n")
         else:
             pass
@@ -251,9 +251,9 @@ def writearg_2sample(setA, setB, twottest_args_fn, program):
     setB = "".join(setB)
     with open(twottest_args_fn, "w") as fo:
         if program == "3dttest++":
-            fo.write(f"-setA case\n{setA}-setB control\n{setB}")
+            fo.write(f"-setA control\n{setA}-setB case\n{setB}")
         elif program == "3dmema":
-            fo.write(f"-set case\n{setA}-set control\n{setB}")
+            fo.write(f"-set control\n{setA}-set case\n{setB}")
 
 
 def writecov_1sample(onettest_cov_fn, covariates_df):
@@ -264,6 +264,7 @@ def writecov_1sample(onettest_cov_fn, covariates_df):
 
     with open(onettest_cov_fn, "w") as fo:
         fo.write("{}\n".format(" ".join(cov_labels)))
+
 
 def write_table(table_fn_file):
     tab_labels = [
@@ -282,9 +283,11 @@ def append2cov_1sample(subject, mean_fd, covariates_df, onettest_cov_fn):
     sub_df = covariates_df[covariates_df["participant_id"] == subject]
     age = sub_df["age"].values[0]
     fix_variables = [subject, age]
-    gender_variables = [sub_df[col].values[0] for col in covariates_df if "gender" in col]
+    gender_variables = [
+        sub_df[col].values[0] for col in covariates_df if "gender" in col
+    ]
     site_variables = [sub_df[col].values[0] for col in covariates_df if "site" in col]
-    
+
     cov_variables = fix_variables + gender_variables + site_variables
     cov_variables_str = [str(x) for x in cov_variables]
 
@@ -294,7 +297,7 @@ def append2cov_1sample(subject, mean_fd, covariates_df, onettest_cov_fn):
 
 def append2table(subject, subjAve_roi_briks_file, participants_df, table_fn_file):
     sub_df = participants_df[participants_df["participant_id"] == subject]
-    
+
     sub_df = sub_df.fillna(0)
     group = sub_df["group"].values[0]
     site = sub_df["site"].values[0]
@@ -361,13 +364,14 @@ def run_twosampttest(bucket_fn, mask_fn, covariates_file, args_file, program, n_
     print(f"\t\t{cmd}", flush=True)
     os.system(cmd)
 
+
 def run_onetwosampttest(bucket_fn, mask_fn, table_file, n_jobs):
     model = "'group+age+gender+(1|site)'"
 
     case_mean = "case_mean 'group : 1*case'"
     control_mean = "control_mean 'group : 1*control'"
     group_mean = "group_mean 'group : 0.5*case +0.5*control'"
-    group_diff = "case_vs_control 'group : 1*case -1*control'"
+    group_diff = "control-case 'group : 1*control -1*case'"
     cmd = f"3dLMEr -prefix {bucket_fn} \
         -mask {mask_fn} \
         -model {model} \
@@ -378,9 +382,10 @@ def run_onetwosampttest(bucket_fn, mask_fn, table_file, n_jobs):
         -gltCode {group_mean} \
         -gltCode {group_diff} \
         -resid {bucket_fn}_res \
+        -dbgArgs \
         -jobs {n_jobs} \
         -dataTable @{table_file}"
-    
+
     print(f"\t\t{cmd}", flush=True)
     os.system(cmd)
 
@@ -408,7 +413,9 @@ def main(
     n_jobs = int(n_jobs)
     # Load important tsv files
     participants_df = pd.read_csv(op.join(dset, "participants.tsv"), sep="\t")
-    covariates_df = pd.read_csv(op.join(dset, "derivatives", "covariates.tsv"), sep="\t")
+    covariates_df = pd.read_csv(
+        op.join(dset, "derivatives", "covariates.tsv"), sep="\t"
+    )
 
     # Define directories
     for session in sessions:
@@ -422,12 +429,6 @@ def main(
         rsfc_group_dir = op.join(rsfc_dir, f"group-{program}")
         os.makedirs(rsfc_group_dir, exist_ok=True)
 
-        print(
-            op.join(
-                rsfc_subjs_dir,
-                f"*task-rest*_space-{space}*_desc-norm_bucketREML+tlrc.HEAD",
-            )
-        )
         # Collect important files
         briks_files = sorted(
             glob(
@@ -449,10 +450,20 @@ def main(
 
         # Remove outliers using MRIQC metrics
         print(f"Total Briks: {len(briks_files)}, Masks: {len(mask_files)}", flush=True)
-        clean_briks_files, clean_mask_files = remove_ouliers(mriqc_dir, briks_files, mask_files)
-        print(f"MRIQC Briks: {len(clean_briks_files)}, Masks: {len(clean_mask_files)}", flush=True)
-        clean_briks_files, clean_mask_files = remove_missingdat(participants_df, clean_briks_files, clean_mask_files)
-        print(f"Miss Briks: {len(clean_briks_files)}, Masks: {len(clean_mask_files)}", flush=True)
+        clean_briks_files, clean_mask_files = remove_ouliers(
+            mriqc_dir, briks_files, mask_files
+        )
+        print(
+            f"MRIQC Briks: {len(clean_briks_files)}, Masks: {len(clean_mask_files)}",
+            flush=True,
+        )
+        clean_briks_files, clean_mask_files = remove_missingdat(
+            participants_df, clean_briks_files, clean_mask_files
+        )
+        print(
+            f"Miss Briks: {len(clean_briks_files)}, Masks: {len(clean_mask_files)}",
+            flush=True,
+        )
         assert len(clean_briks_files) == len(clean_mask_files)
         # clean_briks_nm = [op.basename(x).split("_space-")[0] for x in clean_briks_files]
         # clean_mask_nm = [op.basename(x).split("_space-")[0] for x in clean_mask_files]
@@ -476,21 +487,29 @@ def main(
         )
         if not op.exists(group_mask_fn):
             if template_mask is None:
-                clean_mask_obj = image.load_img(clean_mask_files[0])
-                affine, shape = clean_mask_obj.affine, clean_mask_obj.shape
+                template_mask_img = nib.load(clean_mask_files[0])
             else:
-                template_mask_obj = image.load_img(template_mask)
-                affine, shape = template_mask_obj.affine, template_mask_obj.shape
+                template_mask_img = nib.load(template_mask)
             for clean_mask_file in clean_mask_files:
-                clean_mask_img = image.load_img(clean_mask_file)
-                if clean_mask_img.shape != shape:
-                    clean_res_mask_img = image.resample_img(
-                        clean_mask_img, affine, shape[:3], interpolation="nearest"
+                clean_mask_img = nib.load(clean_mask_file)
+                if clean_mask_img.shape != template_mask_img.shape:
+                    clean_res_mask_img = image.resample_to_img(
+                        clean_mask_img, template_mask_img, interpolation="nearest"
                     )
                     nib.save(clean_res_mask_img, clean_mask_file)
 
             group_mask = masking.intersect_masks(clean_mask_files, threshold=0.5)
             nib.save(group_mask, group_mask_fn)
+
+        # Get template
+        if template is None:
+            # Resampling group to one subject
+            for clean_briks_file in clean_briks_files:
+                template = op.join(f"{clean_briks_file}'[{roi_coef_dict[roi]}]'")
+                template_img = nib.load(template)
+        else:
+            template_img = nib.load(template)
+        print(f"Using template {template} with size: {template_img.shape}", flush=True)
 
         roi_dir = op.join(rsfc_group_dir, roi)
         os.makedirs(roi_dir, exist_ok=True)
@@ -499,6 +518,8 @@ def main(
             setA = []
             setB = []
             # Conform onettest_args_fn and twottest_args_fn
+            writearg_new_1sample = False
+            writecov_new_1sample = False
             onettest_args_fn = op.join(
                 roi_dir,
                 f"sub-group{session_label}_task-rest_desc-1SampletTest{roi}_args.txt",
@@ -507,56 +528,45 @@ def main(
                 roi_dir,
                 f"sub-group{session_label}_task-rest_desc-2SampletTest{roi}_args.txt",
             )
-            if not op.exists(onettest_args_fn):
-                writearg_1sample(onettest_args_fn, program)
-
             # Conform onettest_cov_fn and twottest_cov_fn
             onettest_cov_fn = op.join(
                 roi_dir,
                 f"sub-group{session_label}_task-rest_desc-1SampletTest{roi}_cov.txt",
             )
+            if not op.exists(onettest_args_fn):
+                writearg_new_1sample = True
+                writearg_1sample(onettest_args_fn, program)
+
             if not op.exists(onettest_cov_fn):
+                writecov_new_1sample = True
                 writecov_1sample(onettest_cov_fn, covariates_df)
         else:
-            write_new_table=False
+            write_new_table = False
             table_fn_file = op.join(
-                roi_dir, f"sub-group{session_label}_task-rest_desc-2SampletTest{roi}_table.txt"
+                roi_dir,
+                f"sub-group{session_label}_task-rest_desc-2SampletTest{roi}_table.txt",
             )
             if not op.exists(table_fn_file):
                 write_table(table_fn_file)
-                write_new_table=True
+                write_new_table = True
 
         # Calculate subject and ROI level average connectivity
         subjects = [op.basename(x).split("_")[0] for x in clean_briks_files]
         subjects = sorted(list(set(subjects)))
         print(f"Group analysis sample size: {len(subjects)}")
-
-        # Get template
-        if template is None:
-            for clean_briks_file in clean_briks_files:
-                temp_template = op.join(f"{clean_briks_file}'{roi_coef_dict[roi]}'")
-                temp_template_img = image.load_img(temp_template)
-                if temp_template_img.shape[0] == 81:
-                    template = temp_template
-                    print(f"Template {template}")
-                    break
-        else:
-            template_img = image.load_img(template)
-            template_size = template_img.shape[0:3]
-            print(f"Using template {template} with size: {template_size}", flush=True)
-
         for subject in subjects:
             subj_briks_files = [x for x in clean_briks_files if subject in x]
-
             # This is an inelegant solution but it works for ALC108.
-            # This take the session subj_briks_files according to the session from the 
+            # This take the session subj_briks_files according to the session from the
             # participants.tsv
             if session is None:
                 select_first = False
                 temp_ses_lst = [op.basename(x).split("_")[1] for x in subj_briks_files]
                 for ses_i, temp_ses in enumerate(temp_ses_lst):
                     if temp_ses.split("-")[0] == "ses":
-                        sub_df = participants_df[participants_df["participant_id"] == subject]
+                        sub_df = participants_df[
+                            participants_df["participant_id"] == subject
+                        ]
                         sub_df = sub_df.fillna(0)
                         select_ses = int(sub_df["session"].values[0])
                         if f"ses-{select_ses}" == temp_ses:
@@ -567,7 +577,7 @@ def main(
                             select_first = True
                     else:
                         tmp_session = None
-                # If the session from the participants.tsv was removed by the QC, 
+                # If the session from the participants.tsv was removed by the QC,
                 # let's select the first session instead.
                 if select_first:
                     subj_briks_files = [subj_briks_files[0]]
@@ -627,10 +637,11 @@ def main(
                     roi_tstat_dict[roi],
                 )
 
-            # Resample
-            subjAve_roi_briks = image.load_img(f"{subjAve_roi_coef_file}+tlrc.BRIK")
-            if subjAve_roi_briks.shape[0:2] != template_size:
+            # Resampling
+            subjAve_roi_briks = nib.load(f"{subjAve_roi_coef_file}+tlrc.BRIK")
+            if subjAve_roi_briks.shape != template_img.shape:
                 if not op.exists(f"{subjAveRes_roi_coef_file}+tlrc.BRIK"):
+                    print(f"Resampling: {subjAve_roi_coef_file}")
                     conn_resample(
                         f"{subjAve_roi_coef_file}+tlrc",
                         subjAveRes_roi_coef_file,
@@ -651,7 +662,7 @@ def main(
 
             if program != "3dlmer":
                 # Append subject specific info for onettest_args_fn
-                if op.exists(onettest_args_fn):
+                if op.exists(onettest_args_fn) and writearg_new_1sample:
                     append2arg_1sample(
                         subject,
                         f"{subjAve_roi_coef_file}+tlrc.BRIK",
@@ -661,24 +672,28 @@ def main(
                     )
 
                 # Get setA and setB to write twottest_args_fn
-                # if not op.exists(twottest_args_fn):
-                setA, setB = get_setAB(
-                    subject,
-                    f"{subjAve_roi_coef_file}+tlrc.BRIK",
-                    f"{subjAve_roi_tstat_file}+tlrc.BRIK",
-                    participants_df,
-                    setA,
-                    setB,
-                    program,
-                )
+                if not op.exists(twottest_args_fn):
+                    setA, setB = get_setAB(
+                        subject,
+                        f"{subjAve_roi_coef_file}+tlrc.BRIK",
+                        f"{subjAve_roi_tstat_file}+tlrc.BRIK",
+                        participants_df,
+                        setA,
+                        setB,
+                        program,
+                    )
 
                 # Append subject specific info for onettest_cov_fn
-                if op.exists(onettest_cov_fn):
+                if op.exists(onettest_cov_fn) and writecov_new_1sample:
                     append2cov_1sample(subject, mean_fd, covariates_df, onettest_cov_fn)
+
             else:
                 if op.exists(table_fn_file) and (write_new_table):
                     append2table(
-                        subject, f"{subjAve_roi_coef_file}+tlrc.BRIK", participants_df, table_fn_file
+                        subject,
+                        f"{subjAve_roi_coef_file}+tlrc.BRIK",
+                        participants_df,
+                        table_fn_file,
                     )
 
         if program != "3dlmer":
