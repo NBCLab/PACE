@@ -35,8 +35,8 @@ mriqc_ver=0.16.1
 fmriprep_ver=20.2.5
 afni_ver=22.0.20
 
-# gsr="-gsr"
-gsr=""
+gsr="-gsr"
+# gsr=""
 MRIQC_DIR="${DERIVS_DIR}/mriqc-${mriqc_ver}"
 CLEAN_DIR="${DERIVS_DIR}/denoising${gsr}-${afni_ver}"
 

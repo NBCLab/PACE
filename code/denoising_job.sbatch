@@ -38,11 +38,11 @@ afni_ver=22.0.20
 
 MRIQC_DIR="${DERIVS_DIR}/mriqc-${mriqc_ver}"
 FMRIPREP_DIR="${DERIVS_DIR}/fmriprep-${fmriprep_ver}/fmriprep"
-CLEAN_DIR="${DERIVS_DIR}/denoising-gsr-${afni_ver}"
+CLEAN_DIR="${DERIVS_DIR}/denoising-${afni_ver}"
 mkdir -p ${CLEAN_DIR}
 
 subject=$( sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/sub-(\S*)\>.*/\1/gp" ${BIDS_DIR}/participants.tsv )
-GSR=True
+GSR=False
 DM_SCANS=5
 FD_THR=0.35
 desc_clean="aCompCorCens"

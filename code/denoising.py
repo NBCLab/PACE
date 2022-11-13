@@ -12,9 +12,7 @@ from utils import enhance_censoring, fd_censoring, run_command
 
 
 def _get_parser():
-    parser = argparse.ArgumentParser(
-        description="Run 3dTproject in fmriprep derivatives"
-    )
+    parser = argparse.ArgumentParser(description="Run 3dTproject in fmriprep derivatives")
     parser.add_argument(
         "--mriqc_dir",
         dest="mriqc_dir",
@@ -145,9 +143,7 @@ def get_gsr(confounds_file):
 
 
 def add_outlier(mriqc_dir, prefix):
-    runs_to_exclude_df = pd.read_csv(
-        op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t"
-    )
+    runs_to_exclude_df = pd.read_csv(op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t")
     runs_to_exclude = runs_to_exclude_df["bids_name"].tolist()
 
     if prefix in runs_to_exclude:
@@ -315,17 +311,11 @@ def run_3dtproject(
     if len(tr_keep) < 100:
         exclude = True
         run_name = preproc_name.split("_space-")[0]
-        print(
-            f"\t\tVolumes={len(tr_keep)}, adding run {run_name} to outliers", flush=True
-        )
+        print(f"\t\tVolumes={len(tr_keep)}, adding run {run_name} to outliers", flush=True)
         add_outlier(mriqc_dir, run_name)
 
     # Denoise + band pass filter
-    if (
-        (not op.exists(denoisedFilt_file))
-        and (not op.exists(censFilt_file))
-        and (not exclude)
-    ):
+    if (not op.exists(denoisedFilt_file)) and (not op.exists(censFilt_file)) and (not exclude):
         nuisance_reg(
             preproc_file,
             dummy_scans,
@@ -342,11 +332,7 @@ def run_3dtproject(
         os.remove(denoisedFilt_file)
 
     # Denoise + band pass filter + smoothing
-    if (
-        (not op.exists(denoisedFiltSM_file))
-        and (not op.exists(censFiltSM_file))
-        and (not exclude)
-    ):
+    if (not op.exists(denoisedFiltSM_file)) and (not op.exists(censFiltSM_file)) and (not exclude):
         nuisance_reg(
             preproc_file,
             dummy_scans,
@@ -389,11 +375,7 @@ def run_3dtproject(
             band_pass=False,
         )
     amp_file = f"{rsfc_file}_amp.nii.gz"
-    if (
-        (not op.exists(amp_file))
-        and (not op.exists(fALFF_file))
-        and (op.exists(denoised_file))
-    ):
+    if (not op.exists(amp_file)) and (not op.exists(fALFF_file)) and (op.exists(denoised_file)):
         power_spectrum(denoised_file, rsfc_file, censor_file, mask_file)
         os.remove(denoised_file)
 
@@ -471,11 +453,7 @@ def main(
 
         # Collect important files
         confounds_files = sorted(
-            glob(
-                op.join(
-                    preproc_subj_func_dir, "*task-rest*_desc-confounds_timeseries.tsv"
-                )
-            )
+            glob(op.join(preproc_subj_func_dir, "*task-rest*_desc-confounds_timeseries.tsv"))
         )
         preproc_files = sorted(
             glob(

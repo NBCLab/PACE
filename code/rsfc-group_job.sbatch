@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=vmPFC
+#SBATCH --job-name=striatum
 #SBATCH --time=29:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -7,8 +7,8 @@
 #SBATCH --mem-per-cpu=8gb
 #SBATCH --partition=bluemoon
 # Outputs ----------------------------------
-#SBATCH --output=log/rsfc/group/%x/rsfc-3dttest-gsr-ALC_%A-%a.out   
-#SBATCH --error=log/rsfc/group/%x/rsfc-3dttest-gsr-ALC_%A-%a.err   
+#SBATCH --output=log/rsfc/group/%x/COC-rh-combat_%A-%a.out   
+#SBATCH --error=log/rsfc/group/%x/COC-rh-combat_%A-%a.err   
 # ------------------------------------------
 
 pwd; hostname; date
@@ -23,7 +23,7 @@ set -e
 module load singularity/3.7.1
 # spack load singularity@3.7.1 # Sometimes "module load" doesn't work.
 
-DATA="ALC"
+DATA="COC"
 HOST_DIR="/gpfs1/home/m/r/mriedel"
 PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
@@ -36,17 +36,18 @@ mriqc_ver=0.16.1
 fmriprep_ver=20.2.5
 afni_ver=22.0.20
 
-gsr="-gsr"
-#gsr=""
+#gsr="-gsr"
+gsr=""
 FMRIPREP_DIR="${DERIVS_DIR}/fmriprep-${fmriprep_ver}/fmriprep"
 MRIQC_DIR="${DERIVS_DIR}/mriqc-${mriqc_ver}"
 CLEAN_DIR="${DERIVS_DIR}/denoising${gsr}-${afni_ver}"
 
-program=3dttest++
+# program=3dttest++
 # program=3dmema
-# program=3dlmer
-seed_region=vmPFC
-hemis=lh
+#program=3dlmer
+program=combat
+seed_region=striatum
+hemis=rh
 template="tpl-MNI152NLin2009cAsym_res-02_desc-brain_T1w.nii.gz"
 template_mask="tpl-MNI152NLin2009cAsym_res-02_desc-brain_mask.nii.gz"
 
@@ -77,7 +78,7 @@ SHELL_CMD="singularity exec --cleanenv \
     -B ${CLEAN_DIR}:/clean \
     -B ${TEMPLATE_DIR}:/template_dir
     -B ${RSFC_DIR}:/rsfc \
-    $IMG_DIR/afni-22.3.01.sif"
+    $IMG_DIR/afni-22.3.05.sif"
 
 # Run python script inside afni-${afni_ver}.sif environment
 analysis="${SHELL_CMD} python /code/rsfc-group.py \

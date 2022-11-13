@@ -7,22 +7,22 @@
 #SBATCH --mem-per-cpu=2gb
 #SBATCH --partition=bluemoon
 # Outputs ----------------------------------
-#SBATCH --output=log/%x/ALC/%x-ALC_%A-%a.out   
-#SBATCH --error=log/%x/ALC/%x-ALC_%A-%a.err   
+#SBATCH --output=log/%x/ATS/%x-ATS_%A-%a.out   
+#SBATCH --error=log/%x/ATS/%x-ATS_%A-%a.err   
 # ------------------------------------------
 
 pwd; hostname; date
 set -e
 
 # sbatch --array=1 fmriprep_job.sbatch
-# sbatch --array=2-$(( $( wc -l ../dsets/dset-ALC/participants.tsv | cut -f1 -d' ' ) - 1 ))%5 fmriprep_job.sbatch
+# sbatch --array=2-$(( $( wc -l ../dsets/dset-ATS/participants.tsv | cut -f1 -d' ' ) - 1 ))%5 fmriprep_job.sbatch
 
 #==============Shell script==============#
 #Load the software needed
 module load singularity/3.7.1
 # spack load singularity@3.7.1
 
-DATA="ALC"
+DATA="ATS"
 HOST_DIR="/gpfs1/home/m/r/mriedel"
 PROJECT="pace"
 DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"

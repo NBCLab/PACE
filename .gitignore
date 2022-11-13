@@ -4,6 +4,7 @@ data/
 dsets/dset-*
 dsets/dset-*/derivatives
 dsets/dset-*/sub-*
+results/
 
 dsets/dset-*/sourcedata
 dsets/dset-*/participants.tsv

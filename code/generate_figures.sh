@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=rsfc
-#SBATCH --time=11:00:00
+#SBATCH --time=10:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=4gb
+#SBATCH --mem-per-cpu=15gb
 #SBATCH --partition=bluemoon
 # Outputs ----------------------------------
 #SBATCH --output=log/%x/group/%x-img_%j.out   
@@ -25,13 +25,13 @@ DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 CODE_DIR="${HOST_DIR}/${PROJECT}/code"
 IMG_DIR="${HOST_DIR}/${PROJECT}/software"
 # seed_regions=(vmPFC insula hippocampus striatum amygdala)
-# DATAs=(COC100 ATS105 ALC118)
+# DATAs=(ALC ATS CANN COC)
 GSRs=('none' '-gsr')
 tests=('1SampletTest' '2SampletTest')
 # tests=('1SampletTest')
-programs=("3dlmer" "3dttest++")
-seed_regions=('insula')
-DATAs=(ALC)
+programs=("3dlmer" "3dttest++" "combat")
+seed_regions=('amygdala')
+DATAs=(COC)
 
 for DATA in ${DATAs[@]}; do
     BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
@@ -43,8 +43,8 @@ for DATA in ${DATAs[@]}; do
         if [[ ${seed_region} ==  "vmPFC" ]]; then
             hemispheres=(none)
         else
-            # hemispheres=(lh rh)
-            hemispheres=(rh)
+            hemispheres=(lh rh)
+            # hemispheres=(rh)
         fi
         for hemis in ${hemispheres[@]}; do
             if [[ ${hemis} ==  none ]]; then
@@ -155,7 +155,7 @@ for DATA in ${DATAs[@]}; do
                                 arg_file=${analyses_directory}/group-3dttest++/${analysis}/sub-group_task-rest_desc-${test}${analysis}_args.txt
 
                                 rm -rf ${analyses_directory}/group-${program}/${result_file_img}
-                                if [[ ${program} == '3dttest++' ]] || [[ ${program} == '3dlmer' ]]; then
+                                if [[ ${program} == '3dttest++' ]] || [[ ${program} == 'combat' ]] || [[ ${program} == '3dlmer' ]]; then
                                     convert="${SHELL_CMD} 3dAFNItoNIFTI \
                                                             -prefix /data/group-${program}/${result_file_img} \
                                                             /data/${brik_file}'[$label_count]'"
@@ -281,88 +281,105 @@ for DATA in ${DATAs[@]}; do
                     # Plot unthreshold images
                     out1_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-off_map-0unthr_img.png"
                     out1_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-off_map-0unthr_img.png"
+                    out1_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-off_map-0unthr_img.png"
                     out2_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-on_map-0unthr_img.png"
                     out2_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-on_map-0unthr_img.png"
+                    out2_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-on_map-0unthr_img.png"
                     cmd="${SHELL_CMD} python /code/generate_figures.py \
                                         --results 
                                             /data1/group-3dlmer/${result_file_img} \
                                             /data1/group-3dttest++/${result_file_img} \
+                                            /data1/group-combat/${result_file_img} \
                                             /data2/group-3dlmer/${result_file_img} \
                                             /data2/group-3dttest++/${result_file_img} \
+                                            /data2/group-combat/${result_file_img} \
                                         --outputs 
                                             /output/${out1_3dlmer} \
                                             /output/${out1_3dttest} \
+                                            /output/${out1_combat} \
                                             /output/${out2_3dlmer} \
                                             /output/${out2_3dttest} \
-                                        --map_types 'stat' 'stat' 'stat' 'stat' \
+                                            /output/${out2_combat} \
+                                        --map_types 'stat' 'stat' 'stat' 'stat' 'stat' 'stat' \
                                         --template_img /template/${bg_img} \
                                         --template_mask /template/${bg_mask}"
                     echo Commandline: $cmd
                     eval $cmd 
 
                     # Plot uncurrected threshold
+                    # Plot thresholded and cluster corrected
+                    posthr_both_etac=${analysis}/sub-group_task-rest_desc-${test}${analysis}_briks.etac.ETACmask.global.2sid.05perc.nii.gz
+
                     out1_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-off_map-1uncthr_img.png"
                     out1_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-off_map-1uncthr_img.png"
+                    out1_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-off_map-1uncthr_img.png"
                     out2_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-on_map-1uncthr_img.png"
                     out2_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-on_map-1uncthr_img.png"
+                    out2_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-on_map-1uncthr_img.png"
+
+                    out1_cor_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-off_map-2clusthr_img.png"
+                    out1_cor_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-off_map-2clusthr_img.png"
+                    out1_cor_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-off_map-2clusthr_img.png"
+                    out1_cor_etac="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-off_map-3etac_img.png"
+                    out2_cor_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-on_map-2clusthr_img.png"
+                    out2_cor_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-on_map-2clusthr_img.png"
+                    out2_cor_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-on_map-2clusthr_img.png"
+                    out2_cor_etac="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-on_map-3etac_img.png"
+
                     out1_effect_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-off_map-4cohen_img.png"
                     out1_effect_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-off_map-4cohen_img.png"
+                    out1_effect_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-off_map-4cohen_img.png"
                     out2_effect_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-on_map-4cohen_img.png"
                     out2_effect_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-on_map-4cohen_img.png"
+                    out2_effect_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-on_map-4cohen_img.png"
                     cmd="${SHELL_CMD} python /code/generate_figures.py \
                                         --results 
                                             /data1/group-3dlmer/${posthr_both_file} \
                                             /data1/group-3dttest++/${posthr_both_file} \
+                                            /data1/group-combat/${posthr_both_file} \
                                             /data2/group-3dlmer/${posthr_both_file} \
                                             /data2/group-3dttest++/${posthr_both_file} \
+                                            /data2/group-combat/${posthr_both_file} \
+                                            /data1/group-3dlmer/${posthr_both_clust} \
+                                            /data1/group-3dttest++/${posthr_both_clust} \
+                                            /data1/group-combat/${posthr_both_clust} \
+                                            /data1/group-3dttest++/${posthr_both_etac} \
+                                            /data2/group-3dlmer/${posthr_both_clust} \
+                                            /data2/group-3dttest++/${posthr_both_clust} \
+                                            /data2/group-combat/${posthr_both_clust} \
+                                            /data2/group-3dttest++/${posthr_both_etac} \
                                             /data1/group-3dlmer/${effect_size_file} \
                                             /data1/group-3dttest++/${effect_size_file} \
+                                            /data1/group-combat/${effect_size_file} \
                                             /data2/group-3dlmer/${effect_size_file} \
                                             /data2/group-3dttest++/${effect_size_file} \
+                                            /data2/group-combat/${effect_size_file} \
                                         --outputs 
                                             /output/${out1_3dlmer} \
                                             /output/${out1_3dttest} \
+                                            /output/${out1_combat} \
                                             /output/${out2_3dlmer} \
                                             /output/${out2_3dttest} \
+                                            /output/${out2_combat} \
+                                            /output/${out1_cor_3dlmer} \
+                                            /output/${out1_cor_3dttest} \
+                                            /output/${out1_cor_combat} \
+                                            /output/${out1_cor_etac} \
+                                            /output/${out2_cor_3dlmer} \
+                                            /output/${out2_cor_3dttest} \
+                                            /output/${out2_cor_combat} \
+                                            /output/${out2_cor_etac} \
                                             /output/${out1_effect_3dlmer} \
                                             /output/${out1_effect_3dttest} \
+                                            /output/${out1_effect_combat} \
                                             /output/${out2_effect_3dlmer} \
                                             /output/${out2_effect_3dttest} \
-                                        --map_types 'stat' 'stat' 'stat' 'stat' 'effect' 'effect' 'effect' 'effect' \
+                                            /output/${out2_effect_combat} \
+                                        --map_types 'stat' 'stat' 'stat' 'stat' 'stat' 'stat' 'stat' 'stat' 'stat' 'binary' 'stat' 'stat' 'stat' 'binary' 'effect' 'effect' 'effect' 'effect' 'effect' 'effect' \
                                         --template_img /template/${bg_img} \
                                         --template_mask /template/${bg_mask}"
                     echo Commandline: $cmd
                     eval $cmd 
-
-                    # Plot thresholded and cluster corrected
-                    posthr_both_etac=${analysis}/sub-group_task-rest_desc-${test}${analysis}_briks.etac.ETACmask.global.2sid.05perc.nii.gz
-
-                    out1_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-off_map-2clusthr_img.png"
-                    out1_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-off_map-2clusthr_img.png"
-                    out1_etac="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-off_map-3etac_img.png"
-                    out2_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-on_map-2clusthr_img.png"
-                    out2_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-on_map-2clusthr_img.png"
-                    out2_etac="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-on_map-3etac_img.png"
-                    cmd="${SHELL_CMD} python /code/generate_figures.py \
-                                        --results 
-                                            /data1/group-3dlmer/${posthr_both_clust} \
-                                            /data1/group-3dttest++/${posthr_both_clust} \
-                                            /data1/group-3dttest++/${posthr_both_etac} \
-                                            /data2/group-3dlmer/${posthr_both_clust} \
-                                            /data2/group-3dttest++/${posthr_both_clust} \
-                                            /data2/group-3dttest++/${posthr_both_etac} \
-                                        --outputs 
-                                            /output/${out1_3dlmer} \
-                                             /output/${out1_3dttest} \
-                                             /output/${out1_etac} \
-                                             /output/${out2_3dlmer} \
-                                             /output/${out2_3dttest} \
-                                             /output/${out2_etac} \
-                                        --map_types 'stat' 'stat' 'binary' 'stat' 'stat' 'binary' \
-                                        --template_img /template/${bg_img} \
-                                        --template_mask /template/${bg_mask}"
-                    echo Commandline: $cmd
-                    eval $cmd
                 done
             done
         done

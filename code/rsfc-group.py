@@ -6,6 +6,8 @@ from glob import glob
 
 import nibabel as nib
 import numpy as np
+from neuroCombat import neuroCombat
+from nilearn.maskers import NiftiMasker
 import pandas as pd
 from nilearn import image, masking
 
@@ -102,20 +104,66 @@ def conn_resample(roi_in, roi_out, template):
     os.system(cmd)
 
 
+def conn_harmonize(combat_table_fn, group_mask_fn):
+    masker = NiftiMasker()
+    masker.fit(group_mask_fn)
+
+    data_df = pd.read_csv(combat_table_fn)
+    in_imgs = data_df["input"].to_list()
+    out_imgs = data_df["output"].to_list()
+
+    img_lst = []
+    img_affines = []
+    img_headers = []
+    for img in in_imgs:
+        img_nii = nib.load(img)
+        img_lst.append(masker.transform(img_nii))
+
+        img_affines.append(img_nii.affine)
+        img_headers.append(img_nii.header)
+
+    data = np.vstack(img_lst).T
+
+    covars = data_df[["site", "group"]]
+
+    categorical_cols = ["group"]
+    batch_col = "site"
+
+    assert data.shape[1] == covars.shape[0]
+
+    data_combat = neuroCombat(
+        dat=data, covars=covars, batch_col=batch_col, categorical_cols=categorical_cols
+    )["data"]
+
+    for i_img, out_img in enumerate(out_imgs):
+        new_map = data_combat[:, i_img]
+        new_map_nii = masker.inverse_transform(new_map).get_fdata()
+        new_map_nii = new_map_nii[..., np.newaxis]
+
+        new_img = nib.Nifti1Image(new_map_nii, img_affines[i_img], img_headers[i_img])
+        new_img.to_filename(f"{out_img}.nii")
+
+        cmd = f"3dcopy \
+                {out_img}.nii \
+                {out_img}"
+
+        if op.exists(f"{out_img}+tlrc.BRIK"):
+            os.remove(f"{out_img}+tlrc.BRIK")
+        if op.exists(f"{out_img}+tlrc.HEAD"):
+            os.remove(f"{out_img}+tlrc.HEAD")
+
+        print(f"\t\t{cmd}", flush=True)
+        os.system(cmd)
+
+
 def remove_ouliers(mriqc_dir, briks_files, mask_files):
 
-    runs_to_exclude_df = pd.read_csv(
-        op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t"
-    )
+    runs_to_exclude_df = pd.read_csv(op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t")
     runs_to_exclude = runs_to_exclude_df["bids_name"].tolist()
     prefixes_tpl = tuple(runs_to_exclude)
 
-    clean_briks_files = [
-        x for x in briks_files if not op.basename(x).startswith(prefixes_tpl)
-    ]
-    clean_mask_files = [
-        x for x in mask_files if not op.basename(x).startswith(prefixes_tpl)
-    ]
+    clean_briks_files = [x for x in briks_files if not op.basename(x).startswith(prefixes_tpl)]
+    clean_mask_files = [x for x in mask_files if not op.basename(x).startswith(prefixes_tpl)]
 
     return clean_briks_files, clean_mask_files
 
@@ -129,12 +177,8 @@ def remove_missingdat(participants_df, briks_files, mask_files):
 
     prefixes_tpl = tuple(subjects_to_keep)
 
-    clean_briks_files = [
-        x for x in briks_files if op.basename(x).startswith(prefixes_tpl)
-    ]
-    clean_mask_files = [
-        x for x in mask_files if op.basename(x).startswith(prefixes_tpl)
-    ]
+    clean_briks_files = [x for x in briks_files if op.basename(x).startswith(prefixes_tpl)]
+    clean_mask_files = [x for x in mask_files if op.basename(x).startswith(prefixes_tpl)]
 
     return clean_briks_files, clean_mask_files
 
@@ -180,9 +224,7 @@ def subj_mean_fd(preproc_subj_dir, subj_briks_files, subj_mean_fd_file):
         pd.read_csv(
             op.join(
                 preproc_subj_dir,
-                "{}_desc-confounds_timeseries.tsv".format(
-                    op.basename(x).split("_space-")[0]
-                ),
+                "{}_desc-confounds_timeseries.tsv".format(op.basename(x).split("_space-")[0]),
             ),
             sep="\t",
         )["framewise_displacement"].mean()
@@ -198,7 +240,7 @@ def subj_mean_fd(preproc_subj_dir, subj_briks_files, subj_mean_fd_file):
 
 def writearg_1sample(onettest_args_fn, program):
     with open(onettest_args_fn, "w") as fo:
-        if program == "3dttest++":
+        if (program == "3dttest++") or (program == "combat"):
             fo.write("-setA Group\n")
         elif program == "3dmema":
             fo.write("-set Group\n")
@@ -208,7 +250,7 @@ def append2arg_1sample(
     subject, subjAve_roi_coef_file, subjAve_roi_tstat_file, onettest_args_fn, program
 ):
     coef_id = "{coef}'[0]'".format(coef=subjAve_roi_coef_file)
-    if program == "3dttest++":
+    if (program == "3dttest++") or (program == "combat"):
         with open(onettest_args_fn, "a") as fo:
             fo.write(f"{subject} {coef_id}\n")
     elif program == "3dmema":
@@ -228,7 +270,7 @@ def get_setAB(
 ):
     sub_df = participants_df[participants_df["participant_id"] == subject]
     coef_id = "{coef}'[0]'".format(coef=subjAve_roi_coef_file)
-    if program == "3dttest++":
+    if (program == "3dttest++") or (program == "combat"):
         if sub_df["group"].values[0] == "control":
             setA.append(f"{subject} {coef_id}\n")
         elif sub_df["group"].values[0] == "case":
@@ -250,20 +292,31 @@ def writearg_2sample(setA, setB, twottest_args_fn, program):
     setA = "".join(setA)
     setB = "".join(setB)
     with open(twottest_args_fn, "w") as fo:
-        if program == "3dttest++":
+        if (program == "3dttest++") or (program == "combat"):
             fo.write(f"-setA control\n{setA}-setB case\n{setB}")
         elif program == "3dmema":
             fo.write(f"-set control\n{setA}-set case\n{setB}")
 
 
-def writecov_1sample(onettest_cov_fn, covariates_df):
+def writecov_1sample(onettest_cov_fn, covariates_df, program):
     fix_labels = ["subj", "age"]
     gender_labels = [col for col in covariates_df if "gender" in col]
-    site_labels = [col for col in covariates_df if "site" in col]
-    cov_labels = fix_labels + gender_labels + site_labels
+
+    if program == "combat":
+        cov_labels = fix_labels + gender_labels
+    else:
+        site_labels = [col for col in covariates_df if "site" in col]
+        cov_labels = fix_labels + gender_labels + site_labels
 
     with open(onettest_cov_fn, "w") as fo:
         fo.write("{}\n".format(" ".join(cov_labels)))
+
+
+def write_combat_table(file_name):
+    column_names = ["input", "output", "site", "group"]
+
+    with open(file_name, "w") as fo:
+        fo.write("{}\n".format(",".join(column_names)))
 
 
 def write_table(table_fn_file):
@@ -279,16 +332,42 @@ def write_table(table_fn_file):
         fo.write("{}\n".format("\t".join(tab_labels)))
 
 
-def append2cov_1sample(subject, mean_fd, covariates_df, onettest_cov_fn):
+def append2combat_table(
+    subject,
+    subjAve_roi_briks_file,
+    subjAveHmz_roi_briks_file,
+    participants_df,
+    combat_table_fn,
+):
+    sub_df = participants_df[participants_df["participant_id"] == subject]
+
+    sub_df = sub_df.fillna(0)
+    group = sub_df["group"].values[0]
+    site = sub_df["site"].values[0]
+
+    variables = [
+        subjAve_roi_briks_file,
+        subjAveHmz_roi_briks_file,
+        site,
+        group,
+    ]
+
+    with open(combat_table_fn, "a") as fo:
+        fo.write("{}\n".format(",".join(variables)))
+
+
+def append2cov_1sample(subject, mean_fd, covariates_df, onettest_cov_fn, program):
     sub_df = covariates_df[covariates_df["participant_id"] == subject]
     age = sub_df["age"].values[0]
     fix_variables = [subject, age]
-    gender_variables = [
-        sub_df[col].values[0] for col in covariates_df if "gender" in col
-    ]
-    site_variables = [sub_df[col].values[0] for col in covariates_df if "site" in col]
+    gender_variables = [sub_df[col].values[0] for col in covariates_df if "gender" in col]
 
-    cov_variables = fix_variables + gender_variables + site_variables
+    if program == "combat":
+        cov_variables = fix_variables + gender_variables
+    else:
+        site_variables = [sub_df[col].values[0] for col in covariates_df if "site" in col]
+        cov_variables = fix_variables + gender_variables + site_variables
+
     cov_variables_str = [str(x) for x in cov_variables]
 
     with open(onettest_cov_fn, "a") as fo:
@@ -319,7 +398,7 @@ def append2table(subject, subjAve_roi_briks_file, participants_df, table_fn_file
 
 
 def run_onesampttest(bucket_fn, mask_fn, covariates_file, args_file, program, n_jobs):
-    if program == "3dttest++":
+    if (program == "3dttest++") or (program == "combat"):
         cmd = f"3dttest++ -prefix {bucket_fn} \
                 -mask {mask_fn} \
                 -Covariates {covariates_file} \
@@ -343,7 +422,7 @@ def run_twosampttest(bucket_fn, mask_fn, covariates_file, args_file, program, n_
     #    arg_list = file.readlines()
     # arg_list_up = [x.replace("\n", "") for x in arg_list]
     # arg_list = " ".join(arg_list_up) # for 3dmema?
-    if program == "3dttest++":
+    if (program == "3dttest++") or (program == "combat"):
         cmd = f"3dttest++ -prefix {bucket_fn} \
                 -AminusB \
                 -mask {mask_fn} \
@@ -413,9 +492,7 @@ def main(
     n_jobs = int(n_jobs)
     # Load important tsv files
     participants_df = pd.read_csv(op.join(dset, "participants.tsv"), sep="\t")
-    covariates_df = pd.read_csv(
-        op.join(dset, "derivatives", "covariates.tsv"), sep="\t"
-    )
+    covariates_df = pd.read_csv(op.join(dset, "derivatives", "covariates.tsv"), sep="\t")
 
     # Define directories
     for session in sessions:
@@ -441,18 +518,14 @@ def main(
         )
         mask_files = sorted(
             glob(
-                op.join(
-                    rsfc_subjs_dir, f"*task-rest*_space-{space}*_desc-brain_mask.nii.gz"
-                ),
+                op.join(rsfc_subjs_dir, f"*task-rest*_space-{space}*_desc-brain_mask.nii.gz"),
                 recursive=True,
             )
         )
 
         # Remove outliers using MRIQC metrics
         print(f"Total Briks: {len(briks_files)}, Masks: {len(mask_files)}", flush=True)
-        clean_briks_files, clean_mask_files = remove_ouliers(
-            mriqc_dir, briks_files, mask_files
-        )
+        clean_briks_files, clean_mask_files = remove_ouliers(mriqc_dir, briks_files, mask_files)
         print(
             f"MRIQC Briks: {len(clean_briks_files)}, Masks: {len(clean_mask_files)}",
             flush=True,
@@ -520,6 +593,7 @@ def main(
             # Conform onettest_args_fn and twottest_args_fn
             writearg_new_1sample = False
             writecov_new_1sample = False
+            write_new_combat_table = False
             onettest_args_fn = op.join(
                 roi_dir,
                 f"sub-group{session_label}_task-rest_desc-1SampletTest{roi}_args.txt",
@@ -539,7 +613,17 @@ def main(
 
             if not op.exists(onettest_cov_fn):
                 writecov_new_1sample = True
-                writecov_1sample(onettest_cov_fn, covariates_df)
+                writecov_1sample(onettest_cov_fn, covariates_df, program)
+
+            if program == "combat":
+                combat_table_fn = op.join(
+                    roi_dir,
+                    f"sub-group{session_label}_task-rest_desc-ComBat{roi}_table.txt",
+                )
+                if not op.exists(combat_table_fn):
+                    write_new_combat_table = True
+                    write_combat_table(combat_table_fn)
+
         else:
             write_new_table = False
             table_fn_file = op.join(
@@ -564,15 +648,14 @@ def main(
                 temp_ses_lst = [op.basename(x).split("_")[1] for x in subj_briks_files]
                 for ses_i, temp_ses in enumerate(temp_ses_lst):
                     if temp_ses.split("-")[0] == "ses":
-                        sub_df = participants_df[
-                            participants_df["participant_id"] == subject
-                        ]
+                        sub_df = participants_df[participants_df["participant_id"] == subject]
                         sub_df = sub_df.fillna(0)
-                        select_ses = int(sub_df["session"].values[0])
-                        if f"ses-{select_ses}" == temp_ses:
-                            subj_briks_files = [subj_briks_files[ses_i]]
-                            tmp_session = temp_ses
-                            break
+                        if "session" in sub_df.columns:
+                            select_ses = int(sub_df["session"].values[0])
+                            if f"ses-{select_ses}" == temp_ses:
+                                subj_briks_files = [subj_briks_files[ses_i]]
+                                tmp_session = temp_ses
+                                break
                         if temp_ses == temp_ses_lst[-1]:
                             select_first = True
                     else:
@@ -608,6 +691,10 @@ def main(
             subjAveRes_roi_coef_file = op.join(
                 rsfc_subj_dir,
                 f"{prefix}_space-{space}_desc-ave{roi}res_coef",
+            )
+            subjAveHmz_roi_coef_file = op.join(
+                rsfc_subj_dir,
+                f"{prefix}_space-{space}_desc-ave{roi}hmz_coef",
             )
             subjAve_roi_tstat_file = op.join(
                 rsfc_subj_dir,
@@ -655,10 +742,21 @@ def main(
                 subjAve_roi_coef_file = subjAveRes_roi_coef_file
                 subjAve_roi_tstat_file = subjAveRes_roi_tstat_file
 
+            # Multi-site harmonization
+            if program == "combat":
+                if op.exists(combat_table_fn) and write_new_combat_table:
+                    append2combat_table(
+                        subject,
+                        f"{subjAve_roi_coef_file}+tlrc.BRIK",
+                        subjAveHmz_roi_coef_file,
+                        participants_df,
+                        combat_table_fn,
+                    )
+
+                subjAve_roi_coef_file = subjAveHmz_roi_coef_file
+
             # Get subject level mean FD
-            mean_fd = subj_mean_fd(
-                preproc_subj_dir, subj_briks_files, subj_mean_fd_file
-            )
+            mean_fd = subj_mean_fd(preproc_subj_dir, subj_briks_files, subj_mean_fd_file)
 
             if program != "3dlmer":
                 # Append subject specific info for onettest_args_fn
@@ -685,7 +783,7 @@ def main(
 
                 # Append subject specific info for onettest_cov_fn
                 if op.exists(onettest_cov_fn) and writecov_new_1sample:
-                    append2cov_1sample(subject, mean_fd, covariates_df, onettest_cov_fn)
+                    append2cov_1sample(subject, mean_fd, covariates_df, onettest_cov_fn, program)
 
             else:
                 if op.exists(table_fn_file) and (write_new_table):
@@ -707,6 +805,9 @@ def main(
                 roi_dir,
                 f"sub-group{session_label}_task-rest_desc-1SampletTest{roi}_briks",
             )
+
+            if program == "combat":
+                conn_harmonize(combat_table_fn, group_mask_fn)
 
             # Run one-sample ttest
             os.chdir(op.dirname(onettest_briks_fn))
@@ -736,8 +837,8 @@ def main(
                     program,
                     n_jobs,
                 )
-        else:
 
+        else:
             # Whole-brain, one-sample and two-sample t-tests
             onetwottest_briks_fn = op.join(
                 roi_dir,
