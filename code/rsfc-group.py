@@ -123,17 +123,35 @@ def conn_harmonize(combat_table_fn, group_mask_fn):
         img_headers.append(img_nii.header)
 
     data = np.vstack(img_lst).T
+    """
+    print(data.shape, flush=True)
+    print(data, flush=True)
+    print(np.isclose(data, 0), flush=True)
+    print(np.all(np.isclose(data, 0), axis=1), flush=True)
+    print(np.where(np.all(np.isclose(data, 0), axis=1)), flush=True)
+    """
 
     covars = data_df[["site", "group"]]
+    # print(covars, flush=True)
 
     categorical_cols = ["group"]
     batch_col = "site"
 
     assert data.shape[1] == covars.shape[0]
 
-    data_combat = neuroCombat(
+    model_combat = neuroCombat(
         dat=data, covars=covars, batch_col=batch_col, categorical_cols=categorical_cols
-    )["data"]
+    )
+    data_combat = model_combat["data"]
+    """
+    print(model_combat["estimates"])
+    print(model_combat["info"])
+
+    print(data_combat.shape, flush=True)
+    print(data_combat, flush=True)
+    print(np.all(np.isclose(data_combat, 0), axis=1), flush=True)
+    print(np.where(np.all(np.isclose(data_combat, 0), axis=1)), flush=True)
+    """
 
     for i_img, out_img in enumerate(out_imgs):
         new_map = data_combat[:, i_img]
@@ -486,7 +504,8 @@ def main(
     """Run group analysis workflows on a given dataset."""
     os.system(f"export OMP_NUM_THREADS={n_jobs}")
     roi_coef_dict = {label: x * 3 + 1 for x, label in enumerate(roi_lst)}
-    roi_tstat_dict = {label: x * 3 + 2 for x, label in enumerate(roi_lst)}
+    if program == "3dmema":
+        roi_tstat_dict = {label: x * 3 + 2 for x, label in enumerate(roi_lst)}
     print(roi_coef_dict, flush=True)
     space = "MNI152NLin2009cAsym"
     n_jobs = int(n_jobs)
@@ -696,14 +715,15 @@ def main(
                 rsfc_subj_dir,
                 f"{prefix}_space-{space}_desc-ave{roi}hmz_coef",
             )
-            subjAve_roi_tstat_file = op.join(
-                rsfc_subj_dir,
-                f"{prefix}_space-{space}_desc-ave{roi}_tstat",
-            )
-            subjAveRes_roi_tstat_file = op.join(
-                rsfc_subj_dir,
-                f"{prefix}_space-{space}_desc-ave{roi}res_tstat",
-            )
+            if program == "3dmema":
+                subjAve_roi_tstat_file = op.join(
+                    rsfc_subj_dir,
+                    f"{prefix}_space-{space}_desc-ave{roi}_tstat",
+                )
+                subjAveRes_roi_tstat_file = op.join(
+                    rsfc_subj_dir,
+                    f"{prefix}_space-{space}_desc-ave{roi}res_tstat",
+                )
             subj_mean_fd_file = op.join(
                 rsfc_subj_dir,
                 f"{prefix}_meanFD.txt",
@@ -716,13 +736,14 @@ def main(
                     subjAve_roi_coef_file,
                     roi_coef_dict[roi],
                 )
-                # Average tstat across runs
-                subj_ave_roi(
-                    clean_subj_dir,
-                    subj_briks_files,
-                    subjAve_roi_tstat_file,
-                    roi_tstat_dict[roi],
-                )
+                if program == "3dmema":
+                    # Average tstat across runs
+                    subj_ave_roi(
+                        clean_subj_dir,
+                        subj_briks_files,
+                        subjAve_roi_tstat_file,
+                        roi_tstat_dict[roi],
+                    )
 
             # Resampling
             subjAve_roi_briks = nib.load(f"{subjAve_roi_coef_file}+tlrc.BRIK")
@@ -734,13 +755,16 @@ def main(
                         subjAveRes_roi_coef_file,
                         template,
                     )
-                    conn_resample(
-                        f"{subjAve_roi_tstat_file}+tlrc",
-                        subjAveRes_roi_tstat_file,
-                        template,
-                    )
+                    if program == "3dmema":
+                        conn_resample(
+                            f"{subjAve_roi_tstat_file}+tlrc",
+                            subjAveRes_roi_tstat_file,
+                            template,
+                        )
                 subjAve_roi_coef_file = subjAveRes_roi_coef_file
-                subjAve_roi_tstat_file = subjAveRes_roi_tstat_file
+                subjAve_roi_tstat_file = "None"
+                if program == "3dmema":
+                    subjAve_roi_tstat_file = subjAveRes_roi_tstat_file
 
             # Multi-site harmonization
             if program == "combat":
