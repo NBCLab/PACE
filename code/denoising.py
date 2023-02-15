@@ -142,21 +142,6 @@ def get_gsr(confounds_file):
     return gsr_regressor
 
 
-def add_outlier(mriqc_dir, prefix):
-    runs_to_exclude_df = pd.read_csv(op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t")
-    runs_to_exclude = runs_to_exclude_df["bids_name"].tolist()
-
-    if prefix in runs_to_exclude:
-        print(f"\t\t\t{prefix} already in runs_to_exclude.tsv")
-    else:
-        runs_to_exclude.append(prefix)
-        new_runs_to_exclude_df = pd.DataFrame()
-        new_runs_to_exclude_df["bids_name"] = runs_to_exclude
-        new_runs_to_exclude_df.to_csv(
-            op.join(mriqc_dir, "runs_to_exclude.tsv"), sep="\t", index=False
-        )
-
-
 def nuisance_reg(
     preproc_fn,
     dummy_scans,
@@ -310,9 +295,6 @@ def run_3dtproject(
     # Add runs with < 100 volumes to outlier file
     if len(tr_keep) < 100:
         exclude = True
-        run_name = preproc_name.split("_space-")[0]
-        print(f"\t\tVolumes={len(tr_keep)}, adding run {run_name} to outliers", flush=True)
-        add_outlier(mriqc_dir, run_name)
 
     # Denoise + band pass filter
     if (not op.exists(denoisedFilt_file)) and (not op.exists(censFilt_file)) and (not exclude):
@@ -375,6 +357,8 @@ def run_3dtproject(
             band_pass=False,
         )
     amp_file = f"{rsfc_file}_amp.nii.gz"
+    freq_file = f"{rsfc_file}_freq.1D"
+    time_file = f"{rsfc_file}_time.1D"
     if (not op.exists(amp_file)) and (not op.exists(fALFF_file)) and (op.exists(denoised_file)):
         power_spectrum(denoised_file, rsfc_file, censor_file, mask_file)
         os.remove(denoised_file)
@@ -388,6 +372,9 @@ def run_3dtproject(
                 metric_norm_file = f"{rsfc_norm_file}_{metric}.nii.gz"
                 normalize_metric(metric_file, metric_norm_file, mask_file)
             os.remove(metric_file)
+        os.remove(amp_file)
+        os.remove(freq_file)
+        os.remove(time_file)
 
     # Create json files with Sources and Description fields
     # Load metadata for writing out later and TR now
