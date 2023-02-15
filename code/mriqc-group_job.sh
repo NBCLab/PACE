@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="mriqc"
+#SBATCH --job-name=mriqc
 #SBATCH --time=20:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -29,19 +29,13 @@ DSETS_DIR="${HOST_DIR}/${PROJECT}/dsets"
 CODE_DIR="${HOST_DIR}/${PROJECT}/code"
 BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
 IMG_DIR="${HOST_DIR}/${PROJECT}/software"
-SCRATCH_DIR="${HOST_DIR}/${PROJECT}/scratch/dset-${DATA}/mriqc-${mriqc_ver}/group"
 DERIVS_DIR="${BIDS_DIR}/derivatives/mriqc-${mriqc_ver}"
-mkdir -p ${SCRATCH_DIR}
 mkdir -p ${DERIVS_DIR}
 
-TEMPLATEFLOW_HOST_HOME=${HOME}/.cache/templateflow
-export SINGULARITYENV_TEMPLATEFLOW_HOME=${TEMPLATEFLOW_HOST_HOME}
 
 SINGULARITY_CMD="singularity run --cleanenv \
-      -B $BIDS_DIR:/data \
+      -B ${BIDS_DIR}:/data \
       -B ${DERIVS_DIR}:/out \
-      -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME} \
-      -B ${SCRATCH_DIR}:/work \
       ${IMG_DIR}/poldracklab-mriqc_${mriqc_ver}.sif"
 
 # Compose the command line
@@ -51,7 +45,6 @@ cmd="${SINGULARITY_CMD} /data \
       group \
       --no-sub \
       --verbose-reports \
-      -w /work \
       --fd_thres 0.35 \
       --n_procs ${SLURM_CPUS_PER_TASK} \
       --mem_gb ${mem_gb}"
@@ -67,16 +60,16 @@ SHELL_CMD="singularity exec --cleanenv \
       ${IMG_DIR}/poldracklab-mriqc_${mriqc_ver}.sif"
 
 mriqc="${SHELL_CMD} python /code/mriqc-group.py \
-          --data /out"
+          --dset /data \
+          --out /out"
+
 # Setup done, run the command
 echo
 echo Commandline: $mriqc
 eval $mriqc 
 exitcode=$?
 
-# Output results to a table
 echo "MRIQC-group $exitcode"
-rm -r ${SCRATCH_DIR}
 date
 
 exit $exitcode

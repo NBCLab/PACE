@@ -8,20 +8,37 @@ import pandas as pd
 def _get_parser():
     parser = argparse.ArgumentParser(description="Get outliers from QC metrics")
     parser.add_argument(
-        "--data",
-        dest="data",
+        "--dset",
+        dest="dset",
+        required=True,
+        help="Path to MRIQC derivatives",
+    )
+    parser.add_argument(
+        "--out",
+        dest="out",
         required=True,
         help="Path to MRIQC derivatives",
     )
     return parser
 
 
-def main(data):
-    # Adaptede from a function written by Michael Riedel
-    mriqc_group_df = pd.read_csv(op.join(data, "group_bold.tsv"), sep="\t")
+def main(dset, out):
+    # Adapted from a function written by Michael Riedel
+    mriqc_group_df = pd.read_csv(op.join(out, "group_bold.tsv"), sep="\t")
+    participants_df = pd.read_csv(op.join(dset, "participants.tsv"), sep="\t")
 
     # get task specific runs
     mriqc_group_rest_df = mriqc_group_df[mriqc_group_df["bids_name"].str.contains("task-rest")]
+
+    run_names = mriqc_group_rest_df["bids_name"].to_list()
+    subj_ids = [run.split("_")[0] for run in run_names]
+    mriqc_group_rest_df["participant_id"] = subj_ids
+
+    # Drop row without phenotypic data
+    include_ids = participants_df.dropna(subset=["group"])["participant_id"].tolist()
+    mriqc_group_rest_df = mriqc_group_rest_df[
+        mriqc_group_rest_df["participant_id"].isin(include_ids)
+    ]
 
     # functional qc metrics of interest
     qc_metrics = ["efc", "snr", "fd_mean", "tsnr", "gsr_x", "gsr_y"]
@@ -44,7 +61,7 @@ def main(data):
 
     # drop duplicates
     runs_exclude_df = runs_exclude_df.drop_duplicates(subset=["bids_name"])
-    runs_exclude_df.to_csv(op.join(data, "runs_to_exclude.tsv"), sep="\t", index=False)
+    runs_exclude_df.to_csv(op.join(out, "runs_to_exclude.tsv"), sep="\t", index=False)
 
 
 def _main(argv=None):
