@@ -56,6 +56,7 @@ SINGULARITY_CMD="singularity run --cleanenv \
 # Parse the participants.tsv file and extract one subject ID from the line corresponding to this SLURM task.
 subject=$( sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/sub-(\S*)\>.*/\1/gp" ${BIDS_DIR}/participants.tsv )
 
+dummyscans=5
 # Compose the command line
 mem_gb=`echo "${SLURM_MEM_PER_CPU} * ${SLURM_CPUS_PER_TASK}" | bc -l`
 cmd="${SINGULARITY_CMD} /data \
@@ -69,8 +70,9 @@ cmd="${SINGULARITY_CMD} /data \
       --mem_mb ${mem_gb} \
       --output-spaces MNI152NLin2009cAsym:res-native \
       --ignore fieldmaps sbref t2w flair \
-      --debug compcor \
       --notrack \
+      --dummy-scans ${dummyscans} \
+      --return-all-components \
       --no-submm-recon \
       --fs-license-file /freesurfer/license.txt"
 # --reports-only
@@ -85,6 +87,7 @@ exitcode=$?
 echo "sub-$subject   ${SLURM_ARRAY_TASK_ID}    $exitcode" \
       >> ${HOST_DIR}/${PROJECT}/code/log/${SLURM_JOB_NAME}.${SLURM_ARRAY_JOB_ID}.tsv
 echo Finished tasks ${SLURM_ARRAY_TASK_ID} with exit code $exitcode
-exit $exitcode
-
 date
+rm -r ${SCRATCH_DIR}
+
+exit $exitcode
