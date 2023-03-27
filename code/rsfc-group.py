@@ -21,6 +21,12 @@ def _get_parser():
         help="Path to BIDS directory",
     )
     parser.add_argument(
+        "--deriv_dir",
+        dest="deriv_dir",
+        required=True,
+        help="Path to derivatives directory",
+    )
+    parser.add_argument(
         "--mriqc_dir",
         dest="mriqc_dir",
         required=True,
@@ -123,16 +129,7 @@ def conn_harmonize(combat_table_fn, group_mask_fn):
         img_headers.append(img_nii.header)
 
     data = np.vstack(img_lst).T
-    """
-    print(data.shape, flush=True)
-    print(data, flush=True)
-    print(np.isclose(data, 0), flush=True)
-    print(np.all(np.isclose(data, 0), axis=1), flush=True)
-    print(np.where(np.all(np.isclose(data, 0), axis=1)), flush=True)
-    """
-
     covars = data_df[["site", "group"]]
-    # print(covars, flush=True)
 
     categorical_cols = ["group"]
     batch_col = "site"
@@ -143,15 +140,6 @@ def conn_harmonize(combat_table_fn, group_mask_fn):
         dat=data, covars=covars, batch_col=batch_col, categorical_cols=categorical_cols
     )
     data_combat = model_combat["data"]
-    """
-    print(model_combat["estimates"])
-    print(model_combat["info"])
-
-    print(data_combat.shape, flush=True)
-    print(data_combat, flush=True)
-    print(np.all(np.isclose(data_combat, 0), axis=1), flush=True)
-    print(np.where(np.all(np.isclose(data_combat, 0), axis=1)), flush=True)
-    """
 
     for i_img, out_img in enumerate(out_imgs):
         new_map = data_combat[:, i_img]
@@ -489,6 +477,7 @@ def run_onetwosampttest(bucket_fn, mask_fn, table_file, n_jobs):
 
 def main(
     dset,
+    deriv_dir,
     mriqc_dir,
     preproc_dir,
     clean_dir,
@@ -564,7 +553,7 @@ def main(
 
         # Write group file
         clean_briks_fn = op.join(
-            rsfc_group_dir,
+            rsfc_dir,
             f"sub-group{session_label}_task-rest_space-{space}_briks.txt",
         )
         if not op.exists(clean_briks_fn):
@@ -574,7 +563,7 @@ def main(
 
         # Create group mask
         group_mask_fn = op.join(
-            rsfc_group_dir,
+            deriv_dir,
             f"sub-group{session_label}_task-rest_space-{space}_desc-brain_mask.nii.gz",
         )
         if not op.exists(group_mask_fn):
