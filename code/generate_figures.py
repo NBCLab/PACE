@@ -1,4 +1,5 @@
 import argparse
+import shutil
 
 import nibabel as nib
 import numpy as np
@@ -73,6 +74,9 @@ def main(results, outputs, map_types, template_img, template_mask):
         if map_types[i] == "binary":
             img_res_obj = image.resample_to_img(new_img, bg_img_obj, interpolation="nearest")
         else:
+
+            # shutil.copyfile(in_image, out_nii_nm)
+
             img_res_obj = image.resample_to_img(new_img, bg_img_obj)
         data_res = img_res_obj.get_fdata()
 
@@ -89,11 +93,14 @@ def main(results, outputs, map_types, template_img, template_mask):
         data_res[~mask_data] = 0
 
         new_img_res = nib.Nifti1Image(data_res, img_res_obj.affine, img_res_obj.header)
+        if map_types[i] != "binary":
+            out_nii_nm = outputs[i].replace(".png", ".nii.gz").replace("map-4cohen", "map-3cohen")
+            nib.save(new_img_res, out_nii_nm)
 
         if (_min != 0) and get_cut:
             cut_slices = plotting.find_cuts.find_xyz_cut_coords(new_img_res, None, None)
             get_cut = False
-        elif (_min == 0) and get_cut: 
+        elif (_min == 0) and get_cut:
             cut_slices = plotting.find_cuts.find_xyz_cut_coords(new_img_res, None, None)
 
         print(cut_slices, flush=True)
@@ -164,8 +171,8 @@ def main(results, outputs, map_types, template_img, template_mask):
             # plt.clf()
             # plt.close()
             # ha='center', va='center',
-            text_kwargs = dict(ha='center', va='center', fontsize=28, color='r')
-            plt.text(-0.5, 0.5, 'No Significant Clusters', **text_kwargs)
+            text_kwargs = dict(ha="center", va="center", fontsize=28, color="r")
+            plt.text(-0.5, 0.5, "No Significant Clusters", **text_kwargs)
         display.savefig(outputs[i], dpi=1000)
         display.close()
         display = None
