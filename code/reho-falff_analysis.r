@@ -1,21 +1,20 @@
 library("nlme")
-library("lme4")
 library("stargazer")
+require(table1)
+library(broom)
+library(broom.mixed)
+library("lmerTest")
 
-#dsets <- c("ALC", "ATS", "CANN", "COC")
-#gsrs <- c("-gsr", "")
-#combats <- c("-combat", "")
-#metrics <- c("REHO", "FALFF")
-#seeds <- c("amygdala", "hippocampus", "insula", "striatum", "vmPFC")
 
-dsets <- c("ALC")
-gsrs <- c("-gsr")
+dsets <- c("ALC", "ATS", "CANN", "COC")
+gsrs <- c("-gsr", "")
 combats <- c("-combat", "")
-metrics <- c("REHO")
-seeds <- c("amygdala")
+metrics <- c("REHO", "FALFF")
+seeds <- c("amygdala", "hippocampus", "insula", "striatum", "vmPFC")
 
 for (dset in dsets){
-  cov_path <- paste0("/Users/jperaza/Desktop/pace/raincloud/", dset,"-participants.tsv")
+  der_dir <- c("/gpfs1/home/m/r/mriedel/pace/dsets/dset-", dset,"/derivatives/")
+  cov_path <- paste0(der_dir, dset,"-sumstats_table.txt")
   cova <- read.table(file=cov_path, sep = '\t', header = TRUE)
   for (gsr in gsrs){
     if ( gsr=="" ) {
@@ -25,7 +24,7 @@ for (dset in dsets){
     }
     for (combat in combats){
       for (metric in metrics){
-        dat_path <- paste0("/Users/jperaza/Desktop/pace/raincloud/", dset, gsr, combat, "-", metric, ".tsv")
+        dat_path <- paste0(der_dir, dset, "-", metric, gsr, combat, ".tsv")
         dat_orig <- read.table(file=dat_path, sep = '\t', header = TRUE)
         dat <- merge(x = dat_orig, y = cova[, c("participant_id", "site", "group", "gender", "age")], by = "participant_id", all = TRUE)
         
@@ -70,17 +69,20 @@ for (dset in dsets){
                 equation_linear <- sprintf('%s ~ group + site + gender + age', roi)
                 print(equation_linear)
                 lm.linear[[i]] <- lm(equation_linear, dat)
+                write.csv(tidy(lm.linear[[i]]) , paste0("/Users/jperaza/Desktop/pace/metrics/indiv_tables/", dset, "-", metric, "-", roi, gsr, combat, "-lm", ".csv"))
                 
                 # Multilevel Modeling
                 equation_lml <- sprintf('%s ~ group + gender + age + (1|site)', roi)
                 message(equation_lml)
                 lm.mlm[[i]] <- lmer(formula(equation_lml), data = dat)
-
+                write.csv(tidy(lm.mlm[[i]], effects="fixed"), paste0("/Users/jperaza/Desktop/pace/metrics/indiv_tables/", dset, "-", metric, "-", roi, gsr, combat, "-mlm", ".csv"))
+                class(lm.mlm[[i]]) <- "lmerMod" # Modify the class so that it works with stargazer
               } else {
                 # Regression Fit: combat
                 equation_combat <- sprintf('%s ~ group + gender + age', roi)
                 message(equation_combat)
                 lm.combat[[i]] <- lm(equation_combat, dat)
+                write.csv(tidy(lm.combat[[i]]), paste0("/Users/jperaza/Desktop/pace/metrics/indiv_tables/", dset, "-", metric, "-", roi, gsr, combat, ".csv"))
 
               }
               
@@ -90,15 +92,15 @@ for (dset in dsets){
             if ( seed=="striatum" ) {
               if ( combat=="" ) {
                 title_linear <- paste('Results:', dset, gsr_t, "ComBat=False. LM.", metric, seed, hemis)
-                out_linear <- paste0("/Users/jperaza/Desktop/pace/raincloud/tables/", dset, "-1", gsr, combat, "-", metric, "-", seed, hemis, ".tex")
+                out_linear <- paste0(der_dir, "tables/", dset, "-1", gsr, combat, "-", metric, "-", seed, hemis, ".tex")
                 stargazer(lm.linear, title=title_linear, align=TRUE, type="latex", out=out_linear, float=TRUE, header=FALSE)
                 
                 title_mlm <- paste('Results:', dset, gsr_t, "ComBat=False. LME.", metric, seed, hemis)
-                out_mlm <- paste0("/Users/jperaza/Desktop/pace/raincloud/tables/", dset, "-2", gsr, combat, "-", metric, "-", seed, hemis, ".tex")
+                out_mlm <- paste0(der_dir, "tables/", dset, "-2", gsr, combat, "-", metric, "-", seed, hemis, ".tex")
                 stargazer(lm.mlm, title=title_mlm, align=TRUE, type="latex", out=out_mlm, float=TRUE, header=FALSE)
               } else {
                 title_combat <- paste('Results:', dset, gsr_t, "ComBat=True. LM.", metric, seed, hemis)
-                out_combat <- paste0("/Users/jperaza/Desktop/pace/raincloud/tables/", dset, "-3", gsr, combat, "-", metric, "-", seed, hemis, ".tex")
+                out_combat <- paste0(der_dir, "tables/", dset, "-3", gsr, combat, "-", metric, "-", seed, hemis, ".tex")
                 stargazer(lm.combat, title=title_combat, align=TRUE, type="latex", out=out_combat, float=TRUE, header=FALSE)
               }
               
@@ -108,15 +110,15 @@ for (dset in dsets){
           if ( seed!="striatum" ) {
             if ( combat=="" ) {
               title_linear <- paste('Results:', dset, gsr_t, "ComBat=False. LM.", metric, seed)
-              out_linear <- paste0("/Users/jperaza/Desktop/pace/raincloud/tables/", dset, "-1", gsr, combat, "-", metric, "-", seed, ".tex")
+              out_linear <- paste0(der_dir, "tables/", dset, "-1", gsr, combat, "-", metric, "-", seed, ".tex")
               stargazer(lm.linear, title=title_linear, align=TRUE, type="latex", out=out_linear, float=TRUE, header=FALSE)
             
               title_mlm <- paste('Results:', dset, gsr_t, "ComBat=False. LME.", metric, seed)
-              out_mlm <- paste0("/Users/jperaza/Desktop/pace/raincloud/tables/", dset, "-2", gsr, combat, "-", metric, "-", seed, ".tex")
+              out_mlm <- paste0(der_dir, "tables/", dset, "-2", gsr, combat, "-", metric, "-", seed, ".tex")
               stargazer(lm.mlm, title=title_mlm, align=TRUE, type="latex", out=out_mlm, float=TRUE, header=FALSE)
             } else {
               title_combat <- paste('Results:', dset, gsr_t, "ComBat=True. LM.", metric, seed)
-              out_combat <- paste0("/Users/jperaza/Desktop/pace/raincloud/tables/", dset, "-3", gsr, combat, "-", metric, "-", seed, ".tex")
+              out_combat <- paste0(der_dir, "tables/", dset, "-3", gsr, combat, "-", metric, "-", seed, ".tex")
               stargazer(lm.combat, title=title_combat, align=TRUE, type="latex", out=out_combat, float=TRUE, header=FALSE)
             }
           }
@@ -125,7 +127,3 @@ for (dset in dsets){
     }
   }
 }
-
-# ttest <- t.test(vmPFC1 ~ group + age, data=dat, mu = 0, alt = "two.sided", conf = 0.95, paired = FALSE, var.equal = FALSE)
-# summary(ttest)
-# ttest
