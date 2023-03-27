@@ -2,6 +2,7 @@ import argparse
 import os.path as op
 from glob import glob
 
+from neuroCombat import neuroCombat
 import numpy as np
 import pandas as pd
 
@@ -14,16 +15,25 @@ def _get_parser():
         required=True,
         help="Path to BIDS directory",
     )
+    parser.add_argument(
+        "--dset_name",
+        dest="dset_name",
+        required=True,
+        help="Path to BIDS directory",
+    )
     return parser
 
 
-def main(dset):
+def main(dset, dset_name):
     """Generate list of subject ID from participants.tsv but not in dset"""
     participant_ids_fn = op.join(dset, "participants.tsv")
     participant_ids_df = pd.read_csv(participant_ids_fn, sep="\t")
-    participant_ids = participant_ids_df["participant_id"].tolist()
 
     derivs_dir = op.join(dset, "derivatives")
+    stats_fn = op.join(derivs_dir, f"{dset_name}-sumstats_table.txt")
+
+    stats_df = pd.read_csv(stats_fn, sep="\t")
+    participant_ids = stats_df["participant_id"].tolist()
 
     metrics = ["FALFF", "REHO"]
     seed_regions = ["vmPFC", "insula", "hippocampus", "striatum", "amygdala"]
@@ -82,7 +92,6 @@ def main(dset):
                     for cluster in clusters:
                         metric_lst = []
                         for participant_id in participant_ids:
-                            print(f"Processing {participant_id}", flush=True)
                             weighted_avg = float("NaN")
                             rsfc_subj_dir = op.join(rsfc_dir, participant_id, "**")
 
@@ -118,16 +127,44 @@ def main(dset):
                                 roi_subj_falff_file = roi_subj_falff_files[0]
 
                             metric_val = pd.read_csv(roi_subj_falff_file, header=None)[0][0]
-
-                            # print(
-                            #    f"\tProcessing files\n\t{roi_subj_falff_file}\n\t{metric_val}",
-                            #    flush=True,
-                            # )
                             metric_lst.append(metric_val)
 
                         metric_df[cluster] = metric_lst
 
-            metric_df.to_csv(op.join(derivs_dir, f"{metric}{gsr}.tsv"), sep="\t", index=False)
+            metric_df.to_csv(
+                op.join(derivs_dir, f"{dset_name}-{metric}{gsr}.tsv"), sep="\t", index=False
+            )
+
+            # Run Combat
+            data_df = pd.merge(metric_df, stats_df, on="participant_id")
+            data_df = data_df.dropna()
+
+            covars = data_df[["site", "group"]]
+            data = (
+                data_df.drop(columns=["participant_id", "site", "group", "age", "gender"])
+                .to_numpy()
+                .T
+            )
+
+            # To specify names of the variables that are categorical:
+            categorical_cols = ["group"]
+            # To specify the name of the variable that encodes for the scanner/batch covariate:
+            batch_col = "site"
+
+            # Harmonization step:
+            data_combat = neuroCombat(
+                dat=data, covars=covars, batch_col=batch_col, categorical_cols=categorical_cols
+            )["data"]
+
+            new_data_df = pd.DataFrame(
+                data=data_combat.T,
+                index=data_df["participant_id"].to_list(),
+                columns=metric_df.columns[1:],
+            )
+            new_data_df.index.name = "participant_id"
+            new_data_df.to_csv(
+                op.join(derivs_dir, f"{dset_name}-{metric}{gsr}-combat.tsv"), sep="\t"
+            )
 
 
 def _main(argv=None):
