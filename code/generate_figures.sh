@@ -27,27 +27,28 @@ IMG_DIR="${HOST_DIR}/${PROJECT}/software"
 # seed_regions=(vmPFC insula hippocampus striatum amygdala)
 # DATAs=(ALC ATS CANN COC)
 GSRs=('none' '-gsr')
-# tests=('1SampletTest' '2SampletTest')
+tests=('1SampletTest' '2SampletTest')
 # GSRs=('none')
-tests=('2SampletTest')
+# tests=('1SampletTest')
 programs=("3dlmer" "3dttest++" "combat")
-seed_regions=('vmPFC')
-DATAs=(COC)
+seed_regions=('amygdala')
+DATAs=(ALC)
 
 for DATA in ${DATAs[@]}; do
     BIDS_DIR="${DSETS_DIR}/dset-${DATA}"
     DERIVS_DIR="${BIDS_DIR}/derivatives"
     OUTPUT_DIR="${DERIVS_DIR}/figures"
-    NIFTIs_DIR="${DERIVS_DIR}/NIfTIs-average"
+    NIFTIs_DIR="${DERIVS_DIR}/NIfTIs"
+    NIFTIsAve_DIR="${DERIVS_DIR}/NIfTIs-average"
 
     mkdir -p ${OUTPUT_DIR}
     mkdir -p ${NIFTIs_DIR}
+    mkdir -p ${NIFTIsAve_DIR}
     for seed_region in ${seed_regions[@]}; do
         if [[ ${seed_region} ==  "vmPFC" ]]; then
             hemispheres=(none)
         else
             hemispheres=(lh rh)
-            # hemispheres=(rh)
         fi
         for hemis in ${hemispheres[@]}; do
             if [[ ${hemis} ==  none ]]; then
@@ -102,6 +103,7 @@ for DATA in ${DATAs[@]}; do
                             -B ${analyses_directory}:/data \
                             -B ${OUTPUT_DIR}:/output \
                             -B ${NIFTIs_DIR}:/output_nifti \
+                            -B ${NIFTIsAve_DIR}:/output_niftiave \
                             -B ${CODE_DIR}:/code \
                             -B ${TEMP_DIR}:/template \
                             ${IMG_DIR}/afni-22.0.20.sif"
@@ -279,6 +281,7 @@ for DATA in ${DATAs[@]}; do
                             -B ${RSFC_DIR_2}:/data2 \
                             -B ${OUTPUT_DIR}:/output \
                             -B ${NIFTIs_DIR}:/output_nifti \
+                            -B ${NIFTIsAve_DIR}:/output_niftiave \
                             -B ${CODE_DIR}:/code \
                             -B ${TEMP_DIR}:/template \
                             ${IMG_DIR}/afni-22.0.20.sif"
@@ -312,14 +315,14 @@ for DATA in ${DATAs[@]}; do
                     eval $cmd
 
                     cmd="${SHELL_CMD} fslmaths \
-                        /output/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-off_map-0unthr_img.nii.gz \
-                        -add /output/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-off_map-0unthr_img.nii.gz \
-                        -add /output/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-off_map-0unthr_img.nii.gz \
-                        -add /output/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-on_map-0unthr_img.nii.gz \
-                        -add /output/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-on_map-0unthr_img.nii.gz \
-                        -add /output/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-on_map-0unthr_img.nii.gz \
+                        /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-off_map-0unthr_img.nii.gz \
+                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-off_map-0unthr_img.nii.gz \
+                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-off_map-0unthr_img.nii.gz \
+                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-on_map-0unthr_img.nii.gz \
+                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-on_map-0unthr_img.nii.gz \
+                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-on_map-0unthr_img.nii.gz \
                         -div 6 \
-                        /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_result.nii.gz
+                        /output_niftiave/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_result.nii.gz
                         -odt float"
                     echo Commandline: $cmd
                     eval $cmd

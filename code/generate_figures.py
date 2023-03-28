@@ -74,9 +74,7 @@ def main(results, outputs, map_types, template_img, template_mask):
         if map_types[i] == "binary":
             img_res_obj = image.resample_to_img(new_img, bg_img_obj, interpolation="nearest")
         else:
-
             # shutil.copyfile(in_image, out_nii_nm)
-
             img_res_obj = image.resample_to_img(new_img, bg_img_obj)
         data_res = img_res_obj.get_fdata()
 
@@ -94,7 +92,12 @@ def main(results, outputs, map_types, template_img, template_mask):
 
         new_img_res = nib.Nifti1Image(data_res, img_res_obj.affine, img_res_obj.header)
         if map_types[i] != "binary":
-            out_nii_nm = outputs[i].replace(".png", ".nii.gz").replace("map-4cohen", "map-3cohen")
+            out_nii_nm = (
+                outputs[i]
+                .replace(".png", ".nii.gz")
+                .replace("map-4cohen", "map-3cohen")
+                .replace("/output/", "/output_nifti/")
+            )
             nib.save(new_img_res, out_nii_nm)
 
         if (_min != 0) and get_cut:
