@@ -287,12 +287,12 @@ for DATA in ${DATAs[@]}; do
                             ${IMG_DIR}/afni-22.0.20.sif"
 
                     # Plot unthreshold images
-                    out1_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-off_map-0unthr_img.png"
-                    out1_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-off_map-0unthr_img.png"
-                    out1_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-off_map-0unthr_img.png"
-                    out2_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-on_map-0unthr_img.png"
-                    out2_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-on_map-0unthr_img.png"
-                    out2_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-on_map-0unthr_img.png"
+                    out1_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-3dlmer_gsr-off_test-${test}_map-0unthr_img.png"
+                    out1_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-3dttest_gsr-off_test-${test}_map-0unthr_img.png"
+                    out1_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-combat_gsr-off_test-${test}_map-0unthr_img.png"
+                    out2_3dlmer="dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-3dlmer_gsr-on_test-${test}_map-0unthr_img.png"
+                    out2_3dttest="dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-3dttest_gsr-on_test-${test}_map-0unthr_img.png"
+                    out2_combat="dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-combat_gsr-on_test-${test}_map-0unthr_img.png"
                     cmd="${SHELL_CMD} python /code/generate_figures.py \
                                         --results 
                                             /data1/group-3dlmer/${result_file_img} \
@@ -315,14 +315,14 @@ for DATA in ${DATAs[@]}; do
                     eval $cmd
 
                     cmd="${SHELL_CMD} fslmaths \
-                        /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-off_map-0unthr_img.nii.gz \
-                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-off_map-0unthr_img.nii.gz \
-                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-off_map-0unthr_img.nii.gz \
-                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dlmer_gsr-on_map-0unthr_img.nii.gz \
-                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-3dttest_gsr-on_map-0unthr_img.nii.gz \
-                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_pipe-combat_gsr-on_map-0unthr_img.nii.gz \
+                        /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-3dlmer_gsr-off_test-${test}_map-0unthr_img.nii.gz \
+                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-3dttest_gsr-off_test-${test}_map-0unthr_img.nii.gz \
+                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-combat_gsr-off_test-${test}_map-0unthr_img.nii.gz \
+                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-3dlmer_gsr-on_test-${test}_map-0unthr_img.nii.gz \
+                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-3dttest_gsr-on_test-${test}_map-0unthr_img.nii.gz \
+                        -add /output_nifti/dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_pipe-combat_gsr-on_test-${test}_map-0unthr_img.nii.gz \
                         -div 6 \
-                        /output_niftiave/dset-${DATA}_seed-${seed_region}${hemis_lb}_test-${test}_roi-${analysis}_result.nii.gz
+                        /output_niftiave/dset-${DATA}_seed-${seed_region}${hemis_lb}_roi-${analysis}_test-${test}_result.nii.gz
                         -odt float"
                     echo Commandline: $cmd
                     eval $cmd
